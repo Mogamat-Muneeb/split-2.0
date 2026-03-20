@@ -5,18 +5,16 @@ import { AuthProvider } from "./auth/AuthContext";
 import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./provider/theme-provider";
-import { GoalProvider } from "./provider/GoalContext";
+import { TProvider } from "./provider/ToastProvider";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <GoalProvider>
-          <ThemeProvider>
-            {/* <TProvider /> */}
-            <App />
-          </ThemeProvider>
-        </GoalProvider>
+        <ThemeProvider>
+          <TProvider />
+          <App />
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,
