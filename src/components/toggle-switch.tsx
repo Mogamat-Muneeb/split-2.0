@@ -2,8 +2,6 @@
 import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 
-
-
 interface IToggleSwitchProps {
   onChange?: (value: boolean) => void;
   defaultChecked?: boolean;
@@ -34,25 +32,24 @@ const ToggleSwitch = ({
         />
         {isThemeToggle ? (
           <>
-            <div
-              className={` transition-transform flex border rounded-3xl p-1  bg-[#202020] ${
-                isChecked ? "lg:translate-x-1" : "lg:translate-x-0"
-              }`}
-            >
+            <div className="flex rounded-3xl p-1 bg-[#FAF6FA] dark:bg-[#2d2d2d]">
               <div
-                className={` rounded-full  h-8 w-8 p-2 flex items-center justify-center ${
-                  isChecked ? "bg-transparent" : "bg-background"
-                } transition-opacity`}
+                className={`rounded-full h-8 w-8 p-2 flex items-center justify-center transition-all duration-200 ${
+                  !isChecked ? "bg-yellow-300" : "bg-transparent"
+                }`}
               >
-                <Sun className={`h-4 w-4 text-foreground `} />
+                <Sun className="h-4 w-4 text-foreground" />
               </div>
+
               <div
-                className={` rounded-full  h-8 w-8  p-2 flex items-center justify-center ${
-                  isChecked ? "bg-background" : "bg-transparent"
-                } transition-opacity`}
+                className={`rounded-full h-8 w-8 p-2 flex items-center justify-center transition-all duration-200 ${
+                  isChecked ? "bg-yellow-300" : "bg-transparent"
+                }`}
               >
                 <Moon
-                  className={`h-4 w-4 dark:text-foreground text-background`}
+                  className={`h-4 w-4 ${
+                    isChecked ? "text-black" : "text-foreground"
+                  }`}
                 />
               </div>
             </div>

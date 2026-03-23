@@ -1,17 +1,19 @@
 import { useAuth } from "@/auth/useAuth";
 import supabase from "@/lib/supabase";
 import type { UserProfile } from "@/lib/types";
-import { ClipboardList, Dumbbell, House, Plus } from "lucide-react";
+import { ClipboardList, Dumbbell, House } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
-const FloatingNav = () => {
+import { useTheme } from "next-themes";
+
+const Navbar = () => {
   const location = useLocation();
   const pathname = location.pathname;
   const { user: authUser } = useAuth();
   const [currentUser, setCurrentUser] = useState<UserProfile>();
-
+  const { setTheme } = useTheme();
   const navItems = [
     {
       id: "home",
@@ -81,36 +83,63 @@ const FloatingNav = () => {
     };
   }, [authUser?.id]);
 
-  return (
-    <div className="w-fit fixed bottom-4 left-0 right-0 mx-auto block lg:hidden">
-      <div className="flex gap-10 items-center transition-all duration-200  p-2 min-w-[150px] w-full  rounded-3xl blur-in bg-[#FAF6FA] dark:bg-[#2d2d2d]">
-        <div className="flex items-center justify-center ">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                className={`
-                rounded-full p-2 hover:bg-gray-100 transition-all duration-200
-                `}
-                aria-label={item.label}
-              >
-                <Icon
-                  className={`stroke-[1.75px] ${active ? "stroke-yellow-300" : "stroke-white"} `}
-                  size={20}
-                  // stroke={active ? "bg-yellow-300" : "#7a7a78"}
-                />
-              </Link>
-            );
-          })}
-        </div>
+  const handleToggleChange = (checked: boolean) => {
+    setTheme(checked ? "dark" : "light");
+  };
 
-        <div className=" flex gap-3">
-          {/* <div className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent  bg-[#9eed00] hover:scale-95 transition-all flex justify-center items-center">
-            <Plus size={16} />
+  return (
+    <div className=" lg:flex justify-center items-center h-full min-h-screen">
+      <div className="px-4 py-3 lg:flex flex-col hidden justify-center  gap-10 items-center bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl mx-4">
+        <div className="flex flex-col items-center gap-20">
+          {/* <div className=" tracking-tight font-black text-2xl">
+            SPL<span className="text-yellow-300">I</span>T
           </div> */}
+          <div className="flex flex-col items-center justify-start gap-4  ">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.id}
+                  to={item.path}
+                  className={`
+                      rounded-full p-3 transition-all duration-200
+                      text-sm
+
+                     ${active ? "bg-yellow-300 text-black font-bold px-4" : "bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
+                  aria-label={item.label}
+                >
+                  <Icon
+                    className={`stroke-[1.75px] ${active ? "stroke-black" : "stroke-white"} `}
+                    size={20}
+                  />
+                </Link>
+
+                // <Link
+                //   key={item.id}
+                //   to={item.path}
+                //   className={`
+                //       rounded-full px-3 py-[5px]  transition-all duration-200
+                //       text-sm
+
+                //      ${active ? "bg-yellow-300 text-black font-bold px-4" : "   bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
+                //   aria-label={item.label}
+                // >
+                //   <p>{item.label}</p>
+                // </Link>
+              );
+            })}
+          </div>
+        </div>
+        <div className=" flex flex-col gap-3 items-center">
+          {/* <div className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent  bg-[#9eed00] hover:scale-95 transition-all flex justify-center items-center">
+              <Plus size={16} />
+            </div> */}
+          {/* <ToggleSwitch
+            onChange={handleToggleChange}
+            defaultChecked={theme === "dark"}
+            isThemeToggle={true}
+          /> */}
           {!currentUser?.avatar_url ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -120,7 +149,7 @@ const FloatingNav = () => {
               <img
                 src={"https://i.postimg.cc/c1t7Yy6p/1.png"}
                 alt="User avatar"
-                className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent border hover:ring-[#9eed00] transition-all"
+                className="object-cover rounded-full w-8 h-8 ring-2 ring-transparent border hover:ring-[#9eed00] transition-all"
               />
             </motion.div>
           ) : (
@@ -132,7 +161,7 @@ const FloatingNav = () => {
               <img
                 src={currentUser.avatar_url}
                 alt="User avatar"
-                className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent border hover:ring-[#9eed00] transition-all"
+                className="object-cover rounded-full w-8 h-8 ring-2 ring-transparent border hover:ring-[#9eed00] transition-all"
               />
             </motion.div>
           )}
@@ -142,4 +171,4 @@ const FloatingNav = () => {
   );
 };
 
-export default FloatingNav;
+export default Navbar;
