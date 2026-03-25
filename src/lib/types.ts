@@ -103,3 +103,11 @@ export interface Workout {
   created_at: string;
   exercises: WorkoutExercise[];
 }
+
+
+export interface ActiveWorkout {
+    id?: string; // optional if it's a new workout
+    name: string;
+    startedAt: Date;
+    exercises: WorkoutExercise[];
+}

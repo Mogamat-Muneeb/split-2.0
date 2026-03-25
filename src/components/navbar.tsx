@@ -8,13 +8,16 @@ import { motion } from "framer-motion";
 
 import { useTheme } from "next-themes";
 import ToggleSwitch from "./toggle-switch";
+import { useLogWorkout } from "@/provider/LogWorkoutProvider";
 
 const Navbar = () => {
   const location = useLocation();
   const pathname = location.pathname;
   const { user: authUser } = useAuth();
   const [currentUser, setCurrentUser] = useState<UserProfile>();
-  const { theme , setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+
+  const { elapsedTime, activeWorkout } = useLogWorkout()
   const navItems = [
     {
       id: "stats",
@@ -167,6 +170,8 @@ const Navbar = () => {
               />
             </motion.div>
           )}
+
+          logging: {activeWorkout ? "true" : "false"} and time of {elapsedTime}
         </div>
       </div>
     </div>

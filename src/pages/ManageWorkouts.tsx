@@ -111,7 +111,7 @@ const ManageWorkouts = () => {
         if (error) throw error;
         setWorkouts(workoutsData || []);
 
-
+        console.log("workoutsData", workoutsData);
 
         // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase

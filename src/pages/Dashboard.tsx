@@ -2,12 +2,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import FloatingNav from "@/components/floating-nav";
+import LogWorkoutModal from "@/components/log-workout-modal";
 import Navbar from "@/components/navbar";
+import { useLogWorkout } from "@/provider/LogWorkoutProvider";
 import { AnimatePresence } from "framer-motion";
 
 import { Outlet } from "react-router-dom";
 
 const Dashboard = () => {
+  const { startWorkoutModalOpen, openStartWorkoutModal, closeStartWorkoutModal, selectedWorkout, startWorkout } = useLogWorkout();
   return (
     <AnimatePresence>
       <div className="min-h-screen relative flex h-full  ">
@@ -18,6 +21,13 @@ const Dashboard = () => {
           <Outlet />
         </div>
       </div>
+
+      <LogWorkoutModal
+        open={startWorkoutModalOpen}
+        onClose={closeStartWorkoutModal}
+        workout={selectedWorkout || undefined}
+      />
+
     </AnimatePresence>
   );
 };

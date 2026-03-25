@@ -5,6 +5,8 @@ import supabase from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import type { Workout } from "@/lib/types";
+import { useLogWorkout } from "@/provider/LogWorkoutProvider";
+import LogWorkoutModal from "@/components/log-workout-modal";
 
 
 
@@ -14,6 +16,7 @@ const Home = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [hoveredWorkout, setHoveredWorkout] = useState<string | null>(null);
+  const { startWorkoutModalOpen, openStartWorkoutModal, closeStartWorkoutModal, selectedWorkout, startWorkout } = useLogWorkout();
 
   useEffect(() => {
     // Check if device is mobile
@@ -152,9 +155,11 @@ const Home = () => {
         <p>Choose a routine or start fresh.</p>
       </div>
 
+   
       <div>
         <div className="grid lg:grid-cols-2 grid-cols-1 gap-4">
           <motion.div
+           onClick={() => openStartWorkoutModal()}
             className="flex justify-between items-center bg-orange-600 h-full rounded-4xl p-5"
             whileHover={{ scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300 }}
@@ -239,11 +244,12 @@ const Home = () => {
 
                   return (
                     <motion.div
-                      key={workout.id}
+                      key={workout.id + Math.random}
                       className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl mb-2 flex items-center justify-between"
                       onHoverStart={() =>
                         !isMobile && setHoveredWorkout(workout.id)
                       }
+                       onClick={() => openStartWorkoutModal(workout)} 
                       onHoverEnd={() => !isMobile && setHoveredWorkout(null)}
                       whileHover={{ scale: 1.02 }}
                       transition={{ type: "spring", stiffness: 300 }}

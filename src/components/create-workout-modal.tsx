@@ -617,7 +617,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                   />
                 </div>
 
-                <div className="border rounded-lg p-4 max-h-[600px] overflow-y-auto">
+                <div className="border rounded-lg p-4 max-h-150 overflow-y-auto">
                   {isLoadingWorkout ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">

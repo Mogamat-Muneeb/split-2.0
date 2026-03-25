@@ -6,14 +6,17 @@ import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./provider/theme-provider";
 import { TProvider } from "./provider/ToastProvider";
+import { LogWorkoutProvider } from "./provider/LogWorkoutProvider";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <TProvider />
-          <App />
+          <LogWorkoutProvider>
+            <TProvider />
+            <App />
+          </LogWorkoutProvider>
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
