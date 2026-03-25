@@ -61,11 +61,11 @@ const SortableSetItem: React.FC<{
         </Button>
       </div>
       <div className="w-full flex justify-between items-center gap-2">
-        <div className="w-fit flex flex-col">
+        <div className="w-fit flex flex-col gap-2">
           <h2 className="text-sm">Set</h2>
           <Input className="w-12" type="number" disabled value={setIndex + 1} />
         </div>
-        <div className="w-fit">
+        <div className="w-fit flex flex-col gap-2">
           <h2 className="text-sm">kgs</h2>
           <Input
             type="number"
@@ -79,8 +79,8 @@ const SortableSetItem: React.FC<{
             className="w-24"
           />
         </div>
-        <div>
-          <div className="flex items-center gap-1">
+        <div  className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
             <h2 className="text-sm">Reps</h2>
             <Select
               value={set.repType}

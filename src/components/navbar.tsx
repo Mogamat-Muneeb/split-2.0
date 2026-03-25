@@ -7,13 +7,14 @@ import { useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { useTheme } from "next-themes";
+import ToggleSwitch from "./toggle-switch";
 
 const Navbar = () => {
   const location = useLocation();
   const pathname = location.pathname;
   const { user: authUser } = useAuth();
   const [currentUser, setCurrentUser] = useState<UserProfile>();
-  const { setTheme } = useTheme();
+  const { theme , setTheme } = useTheme();
   const navItems = [
     {
       id: "stats",
@@ -136,11 +137,11 @@ const Navbar = () => {
           {/* <div className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent  bg-[#9eed00] hover:scale-95 transition-all flex justify-center items-center">
               <Plus size={16} />
             </div> */}
-          {/* <ToggleSwitch
+          <ToggleSwitch
             onChange={handleToggleChange}
             defaultChecked={theme === "dark"}
             isThemeToggle={true}
-          /> */}
+          />
           {!currentUser?.avatar_url ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}

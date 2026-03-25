@@ -13,16 +13,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { EllipsisVertical } from "lucide-react";
+import { EllipsisVertical, AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 const ManageWorkouts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [hoveredWorkout, setHoveredWorkout] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [workoutToEdit, setWorkoutToEdit] = useState<Workout | null>(null);
+  const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   useEffect(() => {
     // Check if device is mobile
@@ -35,6 +47,7 @@ const ManageWorkouts = () => {
 
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
   // Loading skeleton component
   const LoadingSkeleton = () => (
     <div className="space-y-3">
@@ -98,7 +111,7 @@ const ManageWorkouts = () => {
         if (error) throw error;
         setWorkouts(workoutsData || []);
 
-        console.log("workoutsData", workoutsData);
+
 
         // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase
@@ -162,6 +175,71 @@ const ManageWorkouts = () => {
     setWorkoutToEdit(null);
   };
 
+  const handleDeleteClick = (workout: Workout, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setWorkoutToDelete(workout);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!workoutToDelete) return;
+
+    try {
+      setIsDeleting(true);
+
+      // First, delete all sets associated with this workout's exercises
+      const { data: workoutExercises } = await supabase
+        .from("workout_exercises")
+        .select("id")
+        .eq("workout_id", workoutToDelete.id);
+
+      if (workoutExercises && workoutExercises.length > 0) {
+        const exerciseIds = workoutExercises.map((we) => we.id);
+
+        // Delete sets for these workout exercises
+        const { error: setsError } = await supabase
+          .from("sets")
+          .delete()
+          .in("workout_exercise_id", exerciseIds);
+
+        if (setsError) throw setsError;
+      }
+
+      // Delete workout exercises
+      const { error: exercisesError } = await supabase
+        .from("workout_exercises")
+        .delete()
+        .eq("workout_id", workoutToDelete.id);
+
+      if (exercisesError) throw exercisesError;
+
+      // Finally, delete the workout
+      const { error: workoutError } = await supabase
+        .from("workouts")
+        .delete()
+        .eq("id", workoutToDelete.id);
+
+      if (workoutError) throw workoutError;
+
+      // Update local state
+      setWorkouts((prev) => prev.filter((w) => w.id !== workoutToDelete.id));
+
+      // Close modal and clear state
+      setIsConfirmModalOpen(false);
+      setWorkoutToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete workout:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete workout");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setIsConfirmModalOpen(false);
+    setWorkoutToDelete(null);
+  };
+
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
       <div className="flex items-center justify-between ">
@@ -181,6 +259,36 @@ const ManageWorkouts = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#2d2d2d] rounded-3xl  border-0 shadow-xl p-6 m-4 ">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Confirm Deletion
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Are you sure you want to delete the workout "
+              {workoutToDelete?.name}"? This action cannot be undone and will
+              permanently delete:
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2">
+            <Button onClick={handleCancelDelete} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 text-white hover:bg-red-600"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Workout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="mt-4 flex items-center w-full">
         <div className="w-full">
@@ -225,7 +333,7 @@ const ManageWorkouts = () => {
                     onHoverStart={() =>
                       !isMobile && setHoveredWorkout(workout.id)
                     }
-                    onHoverEnd={() => !isMobile && setHoveredWorkout(null)}
+                    // onHoverEnd={() => !isMobile && setHoveredWorkout(null)}
                     whileHover={{ scale: 1.02 }}
                     transition={{ type: "spring", stiffness: 300 }}
                     onClick={() => openEditModal(workout)}
@@ -259,7 +367,10 @@ const ManageWorkouts = () => {
                             whileHover={{ scale: 1.1 }}
                           >
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
+                              <DropdownMenuTrigger
+                                asChild
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <EllipsisVertical
                                   size={18}
                                   className="cursor-pointer"
@@ -270,7 +381,13 @@ const ManageWorkouts = () => {
                                 align="start"
                               >
                                 <DropdownMenuGroup>
-                                  <DropdownMenuItem>Remove</DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={(e) =>
+                                      handleDeleteClick(workout, e)
+                                    }
+                                  >
+                                    Remove
+                                  </DropdownMenuItem>
                                 </DropdownMenuGroup>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -287,9 +404,13 @@ const ManageWorkouts = () => {
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 transition={{ duration: 0.2 }}
                                 whileHover={{ scale: 1.1 }}
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
+                                  <DropdownMenuTrigger
+                                    asChild
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
                                     <EllipsisVertical
                                       size={18}
                                       className="cursor-pointer"
@@ -300,7 +421,11 @@ const ManageWorkouts = () => {
                                     align="start"
                                   >
                                     <DropdownMenuGroup>
-                                      <DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={(e) =>
+                                          handleDeleteClick(workout, e)
+                                        }
+                                      >
                                         Remove
                                       </DropdownMenuItem>
                                     </DropdownMenuGroup>

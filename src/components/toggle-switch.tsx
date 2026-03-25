@@ -32,22 +32,22 @@ const ToggleSwitch = ({
         />
         {isThemeToggle ? (
           <>
-            <div className="flex rounded-3xl p-1 bg-[#FAF6FA] dark:bg-[#2d2d2d]">
+            <div className="flex flex-col rounded-3xl p-1 dark:bg-accent bg-white">
               <div
-                className={`rounded-full h-8 w-8 p-2 flex items-center justify-center transition-all duration-200 ${
+                className={`rounded-full h-7 w-7 p-2 flex items-center justify-center transition-all duration-200 ${
                   !isChecked ? "bg-orange-600" : "bg-transparent"
                 }`}
               >
-                <Sun className="h-4 w-4 text-foreground" />
+                <Sun className="h-3 w-3 text-foreground" />
               </div>
 
               <div
-                className={`rounded-full h-8 w-8 p-2 flex items-center justify-center transition-all duration-200 ${
+                className={`rounded-full h-7 w-7 p-2 flex items-center justify-center transition-all duration-200 ${
                   isChecked ? "bg-orange-600" : "bg-transparent"
                 }`}
               >
                 <Moon
-                  className={`h-4 w-4 ${
+                  className={`h-3 w-3 ${
                     isChecked ? "text-black" : "text-foreground"
                   }`}
                 />

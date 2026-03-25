@@ -23,7 +23,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
-
 import type { Workout } from "@/lib/types";
 import { Button } from "./ui/button";
 import SortableExerciseItem from "./sortable-exercise-item";
@@ -164,7 +163,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       try {
         setLoading(true);
         const { exercises } = await getFoldersAndContents();
-        console.log("🚀 ~ fetchData ~ exercises:", exercises)
+        console.log("🚀 ~ fetchData ~ exercises:", exercises);
         setExercises(exercises);
         setError(null);
       } catch (err) {
@@ -372,114 +371,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
     console.log(`Dragging set ${event.active.id} in folder ${folder}`);
   };
 
-  // const handleSaveWorkout = async () => {
-  //   try {
-  //     if (!workoutName.trim()) {
-  //       alert("Workout name is required");
-  //       return;
-  //     }
-
-  //     // 1️⃣ Get current user
-  //     const {
-  //       data: { user },
-  //       error: userError,
-  //     } = await supabase.auth.getUser();
-
-  //     if (userError || !user) {
-  //       throw new Error("User not authenticated");
-  //     }
-
-  //     // 2️⃣ Insert workout
-  //     const { data: workout, error: workoutError } = await supabase
-  //       .from("workouts")
-  //       .insert({
-  //         user_id: user.id,
-  //         name: workoutName,
-  //       })
-  //       .select()
-  //       .single();
-
-  //     if (workoutError) throw workoutError;
-
-  //     // 3️⃣ Insert workout exercises (ordered)
-  //     const exercisesPayload = workoutExercises.map((we, index) => ({
-  //       workout_id: workout.id,
-  //       exercise_id: we.exercise.folder,
-  //       name:
-  //         we.exercise.jsonContents?.[0]?.content?.name ||
-  //         we.exercise.folder.replace(/_/g, " "),
-  //       notes: we.notes,
-  //       rest_timer: we.restTimer,
-  //       position: index,
-  //     }));
-
-  //     const { data: insertedExercises, error: exercisesError } = await supabase
-  //       .from("workout_exercises")
-  //       .insert(exercisesPayload)
-  //       .select();
-
-  //     if (exercisesError) throw exercisesError;
-
-  //     // 4️⃣ Insert sets
-  //     // const setsPayload = insertedExercises.flatMap((ex, index) => {
-  //     //   const original = workoutExercises[index];
-
-  //     //   return original.sets.map((set, i) => ({
-  //     //     workout_exercise_id: ex.id,
-  //     //     set_number: i + 1,
-  //     //     weight: set.weight,
-  //     //     reps: set.repType === "reps" ? set.reps : null,
-  //     //     rep_range_min:
-  //     //       set.repType === "repRange" ? set.repRangeMin : null,
-  //     //     rep_range_max:
-  //     //       set.repType === "repRange" ? set.repRangeMax : null,
-  //     //   }));
-  //     // });
-
-  //     const setsPayload = insertedExercises.flatMap((ex) => {
-  //       const original = workoutExercises.find(
-  //         (we) => we.exercise.folder === ex.exercise_id,
-  //       );
-
-  //       if (!original) return [];
-
-  //       return original.sets.map((set, i) => ({
-  //         workout_exercise_id: ex.id,
-  //         set_number: i + 1,
-  //         weight: set.weight,
-  //         reps: set.repType === "reps" ? set.reps : null,
-  //         rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
-  //         rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
-  //       }));
-  //     });
-
-  //     console.log("setsPayload", setsPayload);
-
-  //     if (setsPayload.length > 0) {
-  //       const { error: setsError } = await supabase
-  //         .from("sets")
-  //         .insert(setsPayload);
-
-  //       if (setsError) throw setsError;
-  //     }
-
-  //     // ✅ Success
-  //     console.log("Workout saved successfully!");
-
-  //     // Optional: reset state or close modal
-  //     closeModal();
-  //   } catch (err) {
-  //     console.error("Error saving workout:", err);
-  //     alert("Failed to save workout");
-  //   }
-  // };
-
-  // const filteredExercises = exercises.filter((exercise) => {
-  //   console.log("🚀 ~ CreateWorkoutModal ~ exercise:", exercise)
-  //   return exercise.folder.toLowerCase().includes(searchTerm.toLowerCase());
-  // },
-  // );
-
   const handleSaveWorkout = async () => {
     try {
       if (!workoutName.trim()) {
@@ -641,7 +532,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
             {/* Left Column - Workout Details */}
             <div className="flex-1  h-full">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg tracking-tight font-bold">
+                <h2 className="text-lg tracking-tight font-bold text-orange-600">
                   New Workout
                 </h2>
               </div>
@@ -655,7 +546,9 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
               <div className="rounded-lg overflow-y-auto mt-2  h-[50vh] max-h-[50vh]">
                 {selectedExercises.length === 0 ? (
                   <div className="bg-accent rounded-xl px-3 py-4">
-                    <p className="font-bold">No exercises added yet</p>
+                    <p className="font-bold text-base tracking-tight">
+                      No exercises added yet
+                    </p>
                     <p className="text-sm">
                       Click on exercises from the right panel to add them
                     </p>
@@ -803,7 +696,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                                       ) && (
                                         <CircleCheck
                                           size={20}
-                                          className="fill-yellow-300 stroke-black [&>circle]:stroke-none"
+                                          className="fill-orange-600 stroke-white [&>circle]:stroke-none"
                                         />
                                       )}
                                     </div>
