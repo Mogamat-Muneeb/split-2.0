@@ -163,7 +163,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       try {
         setLoading(true);
         const { exercises } = await getFoldersAndContents();
-        console.log("🚀 ~ fetchData ~ exercises:", exercises);
+
         setExercises(exercises);
         setError(null);
       } catch (err) {
@@ -245,11 +245,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       workoutExercises.map((we) =>
         we.exercise.folder === folder
           ? {
-              ...we,
-              sets: we.sets.map((set, index) =>
-                index === setIndex ? { ...set, ...updates } : set,
-              ),
-            }
+            ...we,
+            sets: we.sets.map((set, index) =>
+              index === setIndex ? { ...set, ...updates } : set,
+            ),
+          }
           : we,
       ),
     );
@@ -368,7 +368,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   };
 
   const handleSetDragStart = (event: DragStartEvent, folder: string) => {
-    console.log(`Dragging set ${event.active.id} in folder ${folder}`);
+    console.warn(`Dragging set ${event.active.id} in folder ${folder}`);
   };
 
   const handleSaveWorkout = async () => {
@@ -694,11 +694,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                                       {selectedExercises.find(
                                         (e) => e.folder === exercise.folder,
                                       ) && (
-                                        <CircleCheck
-                                          size={20}
-                                          className="fill-orange-600 stroke-white [&>circle]:stroke-none"
-                                        />
-                                      )}
+                                          <CircleCheck
+                                            size={20}
+                                            className="fill-orange-600 stroke-white [&>circle]:stroke-none"
+                                          />
+                                        )}
                                     </div>
                                   </div>
                                 </div>

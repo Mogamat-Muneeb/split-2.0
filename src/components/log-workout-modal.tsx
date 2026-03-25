@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useLogWorkout } from "@/provider/LogWorkoutProvider";
 import type { Workout } from "@/lib/types";
 import LoggingWorkout from "./logging-workout";
+import { ChevronDown, Watch, WatchIcon } from "lucide-react";
 
 interface LogWorkoutModalProps {
   open: boolean;
@@ -17,6 +18,9 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
   workout,
 }) => {
   const { startWorkout, activeWorkout, resetWorkout } = useLogWorkout();
+
+  console.log("activeWorkout🟢", activeWorkout)
+  console.log("workout🟢", workout)
 
   const handleStart = () => {
     startWorkout(workout);
@@ -39,17 +43,43 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
       >
         <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
-          <h2 className="tracking-tight font-bold text-orange-600">
+          {/* <h2 className="tracking-tight font-bold text-orange-600">
             {workout ? `Start ${workout.name}` : "Start New Workout"}
-          </h2>
+          </h2> */}
+
+          <div className="flex justify-between items-center w-full">
+            <div className="flex items-center gap-2">
+              <ChevronDown />
+              <h2>Log Workout</h2>
+            </div>
+            <div className="flex items-center gap-4">
+              <div>
+                <WatchIcon />
+              </div>
+              <div>
+                <Button>Finish</Button>
+              </div>
+            </div>
+          </div>
 
           <div className="mt-4 max-h-[50vh] overflow-y-auto">
             {activeWorkout ? (
-              activeWorkout.id === workout?.id ? (
-                <LoggingWorkout activeWorkout={activeWorkout} />
+              activeWorkout.id === workout?.id || activeWorkout?.workoutId === workout?.id ? (
+                <>
+
+                  <LoggingWorkout activeWorkout={activeWorkout} />
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      resetWorkout();
+                    }}
+                  >
+                    Discard Active Workout
+                  </Button>
+                </>
               ) : (
                 // Active workout is different
                 <div className="space-y-2">

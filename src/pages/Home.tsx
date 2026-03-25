@@ -75,7 +75,6 @@ const Home = () => {
         if (error) throw error;
         setWorkouts(workoutsData || []);
 
-        console.log("workoutsData", workoutsData);
 
         // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase
@@ -89,7 +88,7 @@ const Home = () => {
               filter: `user_id=eq.${user.id}`,
             },
             (payload) => {
-              console.log("Realtime workout update:", payload);
+
               setWorkouts((prev) => {
                 switch (payload.eventType) {
                   case "INSERT":
@@ -124,11 +123,6 @@ const Home = () => {
     };
   }, []);
 
-  const openModal = () => {
-    // Your modal logic here
-    console.log("Open modal");
-  };
-
   // Loading skeleton component
   const LoadingSkeleton = () => (
     <div className="space-y-3">
@@ -155,11 +149,11 @@ const Home = () => {
         <p>Choose a routine or start fresh.</p>
       </div>
 
-   
+
       <div>
         <div className="grid lg:grid-cols-2 grid-cols-1 gap-4">
           <motion.div
-           onClick={() => openStartWorkoutModal()}
+            onClick={() => openStartWorkoutModal()}
             className="flex justify-between items-center bg-orange-600 h-full rounded-4xl p-5"
             whileHover={{ scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300 }}
@@ -249,7 +243,7 @@ const Home = () => {
                       onHoverStart={() =>
                         !isMobile && setHoveredWorkout(workout.id)
                       }
-                       onClick={() => openStartWorkoutModal(workout)} 
+                      onClick={() => openStartWorkoutModal(workout)}
                       onHoverEnd={() => !isMobile && setHoveredWorkout(null)}
                       whileHover={{ scale: 1.02 }}
                       transition={{ type: "spring", stiffness: 300 }}

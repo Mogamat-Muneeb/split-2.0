@@ -171,7 +171,7 @@ const Navbar = () => {
             </motion.div>
           )}
 
-          logging: {activeWorkout ? "true" : "false"} and time of {elapsedTime}
+          {/* logging: {activeWorkout ? "true" : "false"} and time of {elapsedTime} */}
         </div>
       </div>
     </div>

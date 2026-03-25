@@ -1,5 +1,6 @@
 import type { ActiveWorkout } from "@/lib/types";
 import { useLogWorkout } from "@/provider/LogWorkoutProvider";
+import { Check } from "lucide-react";
 import React from "react";
 
 interface LoggingWorkoutProps {
@@ -7,28 +8,55 @@ interface LoggingWorkoutProps {
 }
 
 const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
-  console.log("🚀 ~ LoggingWorkout ~ activeWorkout:", activeWorkout)
   const { updateSet } = useLogWorkout();
   return (
     <div className="space-y-6 p-4">
-      <h2 className="text-lg font-bold text-gray-700">
-        Continuing: {activeWorkout.name}
-      </h2>
-
       {activeWorkout.exercises.map((exercise, exIndex) => (
-        <div key={exercise.id} className="border rounded-lg p-4">
-          <h3 className="font-semibold text-gray-800 mb-2">
+        <div key={exercise.id} className=" bg-accent rounded-lg p-4">
+          <h3 className="font-medium my-4">
             {exIndex + 1}. {exercise.name}
           </h3>
 
           <div className="space-y-2">
-            {exercise.sets.map((set, setIndex) => (
+            {/* Header */}
+            <div className="grid grid-cols-5 items-center w-full mb-4 text-sm font-medium">
+              <div>SET</div>
+              <div className="flex items-center justify-center w-full">
+                PREV
+              </div>
+              <div className="flex items-center justify-center w-full ">KG</div>
+              <div className=" flex items-center justify-center w-full">
+                <p>REPS</p>
+              </div>
+              <div className="flex items-center justify-end">
+                <Check />
+              </div>
+            </div>
+
+            {exercise.sets.map((set) => (
               <div
                 key={set.id}
-                className="flex justify-between items-center p-2 rounded shadow-sm"
+                className={`grid grid-cols-5 items-center  p-2 rounded-lg shadow-sm ${set.checked ? "dark:bg-[#33658a] bg-[#86bbd8]" :"bg-background"}`}
               >
-                <div className="flex items-center gap-3">
+                <div>{set.set_number}</div>
+
+                <div className="flex  items-center justify-center w-full">
+                  -
+                </div>
+
+                <div className="flex  items-center justify-center w-full">
+                  {set.weight} kg
+                </div>
+
+                <div className="flex  items-center justify-center w-full">
+                  {set.reps !== null
+                    ? `${set.reps} `
+                    : ` ${set.rep_range_min}-${set.rep_range_max}`}
+                </div>
+
+                <div className="flex justify-end">
                   <input
+                    className='accent-orange-700'
                     type="checkbox"
                     checked={set.checked || false}
                     onChange={() =>
@@ -37,21 +65,10 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                       })
                     }
                   />
-
-                  <span className="font-medium">Set {set.set_number}</span>
                 </div>
-
-                <span>
-                  {set.reps !== null
-                    ? `${set.reps} reps`
-                    : `Rep Range: ${set.rep_range_min}-${set.rep_range_max}`}
-                </span>
-
-                <span>{set.weight} kg</span>
               </div>
             ))}
           </div>
-
           {exercise.notes && (
             <p className="mt-2 text-sm text-gray-500">
               Notes: {exercise.notes}

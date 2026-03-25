@@ -111,7 +111,7 @@ const ManageWorkouts = () => {
         if (error) throw error;
         setWorkouts(workoutsData || []);
 
-        console.log("workoutsData", workoutsData);
+
 
         // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase
@@ -125,7 +125,7 @@ const ManageWorkouts = () => {
               filter: `user_id=eq.${user.id}`,
             },
             (payload) => {
-              console.log("Realtime workout update:", payload);
+
               setWorkouts((prev) => {
                 switch (payload.eventType) {
                   case "INSERT":
@@ -323,7 +323,7 @@ const ManageWorkouts = () => {
             {!isLoading &&
               !error &&
               workouts.map((workout) => {
-                console.log("🚀 ~ ManageWorkouts ~ workout:", workout);
+
                 const isHovered = hoveredWorkout === workout.id;
 
                 return (
