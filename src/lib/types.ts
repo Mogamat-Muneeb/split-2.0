@@ -75,3 +75,31 @@ export type GoalNote = {
   created_at: string;
   updated_at: string;
 };
+
+
+
+export interface Set {
+  id: string;
+  set_number: number;
+  weight: number;
+  reps?: number;
+  rep_range_min?: number;
+  rep_range_max?: number;
+}
+
+export interface WorkoutExercise {
+  id: string;
+  exercise_id: string;
+  name: string;
+  notes: string;
+  rest_timer: string;
+  position: number;
+  sets: Set[];
+}
+
+export interface Workout {
+  id: string;
+  name: string;
+  created_at: string;
+  exercises: WorkoutExercise[];
+}

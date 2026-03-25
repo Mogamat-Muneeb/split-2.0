@@ -4,11 +4,12 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import Splits from "./pages/splits";
+import ManageWorkouts from "./pages/ManageWorkouts";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={"Landing"} />
       <Route path="/login" element={<Login />} />
 
       <Route
@@ -19,18 +20,18 @@ export default function App() {
           </ProtectedRoute>
         }
       >
+        <Route index element={<Home />} />
+        <Route path="stats" element={<Splits />} />
+        <Route path="splits" element={<Splits />} />
+        <Route path="manage-workouts" element={<ManageWorkouts />} />
         <Route
-          index
+          path="exercises"
           element={
             <div>
-              <div className="">Dashboard Home</div>
+              <div className="">Dashboard Exercises</div>
             </div>
           }
         />
-        <Route path="splits" element={<Splits />} />
-        <Route path="exercises" element={       <div>
-              <div className="">Dashboard Exercises</div>
-            </div>} />
       </Route>
     </Routes>
   );

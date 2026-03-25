@@ -35,7 +35,7 @@ const ToggleSwitch = ({
             <div className="flex rounded-3xl p-1 bg-[#FAF6FA] dark:bg-[#2d2d2d]">
               <div
                 className={`rounded-full h-8 w-8 p-2 flex items-center justify-center transition-all duration-200 ${
-                  !isChecked ? "bg-yellow-300" : "bg-transparent"
+                  !isChecked ? "bg-orange-600" : "bg-transparent"
                 }`}
               >
                 <Sun className="h-4 w-4 text-foreground" />
@@ -43,7 +43,7 @@ const ToggleSwitch = ({
 
               <div
                 className={`rounded-full h-8 w-8 p-2 flex items-center justify-center transition-all duration-200 ${
-                  isChecked ? "bg-yellow-300" : "bg-transparent"
+                  isChecked ? "bg-orange-600" : "bg-transparent"
                 }`}
               >
                 <Moon

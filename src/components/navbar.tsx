@@ -1,7 +1,7 @@
 import { useAuth } from "@/auth/useAuth";
 import supabase from "@/lib/supabase";
 import type { UserProfile } from "@/lib/types";
-import { ClipboardList, Dumbbell, House } from "lucide-react";
+import { ClipboardList, Dumbbell, History, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -16,9 +16,15 @@ const Navbar = () => {
   const { setTheme } = useTheme();
   const navItems = [
     {
+      id: "stats",
+      path: "/dashboard/stats",
+      icon: History,
+      label: "Stats",
+    },
+    {
       id: "home",
       path: "/dashboard",
-      icon: House,
+      icon: Plus,
       label: "Home",
     },
     {
@@ -27,13 +33,8 @@ const Navbar = () => {
       icon: ClipboardList,
       label: "Workouts",
     },
-    {
-      id: "exercises",
-      path: "/dashboard/exercises",
-      icon: Dumbbell,
-      label: "Exercises",
-    },
   ];
+
   const isActive = (itemPath: string) => {
     if (itemPath === "/dashboard") {
       return pathname === "/dashboard";
@@ -89,10 +90,10 @@ const Navbar = () => {
 
   return (
     <div className=" lg:flex justify-center items-center h-full min-h-screen">
-      <div className="px-4 py-3 lg:flex flex-col hidden justify-center  gap-10 items-center bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl mx-4">
+      <div className="p-3 lg:flex flex-col hidden justify-center  gap-4 items-center bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl mx-4">
         <div className="flex flex-col items-center gap-20">
           {/* <div className=" tracking-tight font-black text-2xl">
-            SPL<span className="text-yellow-300">I</span>T
+            SPL<span className="text-orange-600">I</span>T
           </div> */}
           <div className="flex flex-col items-center justify-start gap-4  ">
             {navItems.map((item) => {
@@ -106,7 +107,7 @@ const Navbar = () => {
                       rounded-full p-3 transition-all duration-200
                       text-sm
 
-                     ${active ? "bg-yellow-300 text-black font-bold px-4" : "bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
+                     ${active ? "bg-orange-600 text-black font-bold px-4" : "bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
                   aria-label={item.label}
                 >
                   <Icon
@@ -122,7 +123,7 @@ const Navbar = () => {
                 //       rounded-full px-3 py-[5px]  transition-all duration-200
                 //       text-sm
 
-                //      ${active ? "bg-yellow-300 text-black font-bold px-4" : "   bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
+                //      ${active ? "bg-orange-600 text-black font-bold px-4" : "   bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
                 //   aria-label={item.label}
                 // >
                 //   <p>{item.label}</p>

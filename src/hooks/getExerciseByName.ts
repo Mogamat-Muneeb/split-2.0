@@ -1,6 +1,6 @@
 export async function getFoldersAndContents() {
-    // const apiUrl = "https://spilt-data-backend.vercel.app/exercises";
-    const apiUrl = "http://localhost:9000/exercises";
+    const apiUrl = "https://spilt-data-backend.vercel.app/exercises";
+    // const apiUrl = "http://localhost:9000/exercises";
   
     try {
       const response = await fetch(apiUrl);

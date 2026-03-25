@@ -1,43 +1,44 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Input } from "./ui/input";
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
-import {
-  CircleCheck,
-  EllipsisVertical,
-  Trash2,
-  Plus,
-  GripVertical,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CircleCheck } from "lucide-react";
 
-interface ExerciseJsonContent {
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import supabase from "@/lib/supabase";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+
+
+import type { Workout } from "@/lib/types";
+import { Button } from "./ui/button";
+import SortableExerciseItem from "./sortable-exercise-item";
+
+export interface ExerciseJsonContent {
   [key: string]: any;
 }
 
-interface Exercise {
+export interface Exercise {
   folder: string;
   images: string[];
   jsonContents: ExerciseJsonContent[];
 }
 
-interface Set {
+export interface Set {
   weight: number;
   repType: "reps" | "repRange";
   reps?: number;
@@ -45,7 +46,7 @@ interface Set {
   repRangeMax?: number;
 }
 
-interface WorkoutExercise {
+export interface WorkoutExercise {
   exercise: Exercise;
   notes: string;
   restTimer: string;
@@ -54,10 +55,12 @@ interface WorkoutExercise {
 
 interface CreateWorkoutModalProps {
   closeModal: () => void;
+  workoutToEdit?: Workout | null;
 }
 
 const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   closeModal,
+  workoutToEdit,
 }) => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +71,73 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>(
     [],
   );
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoadingWorkout, setIsLoadingWorkout] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Form state for adding a new set to a specific exercise
+  useEffect(() => {
+    if (workoutToEdit) {
+      setIsEditing(true);
+      setWorkoutName(workoutToEdit.name);
+      loadWorkoutExercises(workoutToEdit);
+    }
+  }, [workoutToEdit]);
+
+  const loadWorkoutExercises = async (workout: Workout) => {
+    setIsLoadingWorkout(true);
+    try {
+      // Fetch the full workout data with exercises and sets
+      const { data, error } = await supabase
+        .from("workouts")
+        .select(
+          `
+          *,
+          workout_exercises(
+            *,
+            sets(*)
+          )
+        `,
+        )
+        .eq("id", workout.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        // Transform the data to match your WorkoutExercise structure
+        const loadedExercises = data.workout_exercises.map((we: any) => ({
+          exercise: {
+            folder: we.exercise_id,
+            images: [], // You'll need to fetch these from your exercise library
+            jsonContents: [], // You'll need to fetch these from your exercise library
+          },
+          notes: we.notes || "",
+          restTimer: we.rest_timer || "off",
+          sets: we.sets.map((set: any) => ({
+            weight: set.weight,
+            repType: set.reps !== null ? "reps" : "repRange",
+            reps: set.reps,
+            repRangeMin: set.rep_range_min,
+            repRangeMax: set.rep_range_max,
+          })),
+        }));
+
+        setSelectedExercises(loadedExercises.map((le) => le.exercise));
+        setWorkoutExercises(loadedExercises);
+
+        // Initialize set forms for each exercise
+        loadedExercises.forEach((le) => {
+          initializeSetForm(le.exercise.folder);
+        });
+      }
+    } catch (err) {
+      console.error("Error loading workout:", err);
+      alert("Failed to load workout data");
+    } finally {
+      setIsLoadingWorkout(false);
+    }
+  };
+
   const [newSetForm, setNewSetForm] = useState<{
     [folder: string]: {
       weight: string;
@@ -80,11 +148,23 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
     };
   }>({});
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const { exercises } = await getFoldersAndContents();
+        console.log("🚀 ~ fetchData ~ exercises:", exercises)
         setExercises(exercises);
         setError(null);
       } catch (err) {
@@ -200,7 +280,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       ),
     );
 
-    // Reset the form
     setNewSetForm((prev) => ({
       ...prev,
       [folder]: {
@@ -233,38 +312,312 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
     }));
   };
 
-  const handleSaveWorkout = () => {
-    const workoutData = {
-      name: workoutName,
-      createdAt: new Date().toISOString(),
-      exercises: workoutExercises.map((we) => ({
-        id: we.exercise.folder,
-        name:
-          we.exercise.jsonContents?.[0]?.content?.name ||
-          we.exercise.folder.replace(/_/g, " "),
-        notes: we.notes,
-        restTimer: we.restTimer,
-        sets: we.sets.map((set, index) => ({
-          setNumber: index + 1,
-          weight: set.weight,
-          ...(set.repType === "reps"
-            ? { reps: set.reps }
-            : { repRange: { min: set.repRangeMin, max: set.repRangeMax } }),
-        })),
-      })),
-      totalExercises: selectedExercises.length,
-      totalSets: workoutExercises.reduce(
-        (total, we) => total + we.sets.length,
-        0,
-      ),
-    };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    console.log("Saving workout:", workoutData);
+    if (active.id !== over?.id) {
+      const oldIndex = selectedExercises.findIndex(
+        (item) => item.folder === active.id,
+      );
+      const newIndex = selectedExercises.findIndex(
+        (item) => item.folder === over?.id,
+      );
+
+      const newSelectedExercises = arrayMove(
+        selectedExercises,
+        oldIndex,
+        newIndex,
+      );
+      setSelectedExercises(newSelectedExercises);
+
+      const newWorkoutExercises = arrayMove(
+        workoutExercises,
+        oldIndex,
+        newIndex,
+      );
+      setWorkoutExercises(newWorkoutExercises);
+    }
+
+    setActiveId(null);
   };
 
-  const filteredExercises = exercises.filter((exercise) =>
-    exercise.folder.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const handleSetDragEnd = (event: DragEndEvent, folder: string) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const activeSetIndex = parseInt(active.id.toString().split("-set-")[1]);
+      const overSetIndex = parseInt(
+        over?.id.toString().split("-set-")[1] as any,
+      );
+
+      if (!isNaN(activeSetIndex) && !isNaN(overSetIndex)) {
+        setWorkoutExercises(
+          workoutExercises.map((we) => {
+            if (we.exercise.folder === folder) {
+              const newSets = arrayMove(we.sets, activeSetIndex, overSetIndex);
+              return { ...we, sets: newSets };
+            }
+            return we;
+          }),
+        );
+      }
+    }
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleSetDragStart = (event: DragStartEvent, folder: string) => {
+    console.log(`Dragging set ${event.active.id} in folder ${folder}`);
+  };
+
+  // const handleSaveWorkout = async () => {
+  //   try {
+  //     if (!workoutName.trim()) {
+  //       alert("Workout name is required");
+  //       return;
+  //     }
+
+  //     // 1️⃣ Get current user
+  //     const {
+  //       data: { user },
+  //       error: userError,
+  //     } = await supabase.auth.getUser();
+
+  //     if (userError || !user) {
+  //       throw new Error("User not authenticated");
+  //     }
+
+  //     // 2️⃣ Insert workout
+  //     const { data: workout, error: workoutError } = await supabase
+  //       .from("workouts")
+  //       .insert({
+  //         user_id: user.id,
+  //         name: workoutName,
+  //       })
+  //       .select()
+  //       .single();
+
+  //     if (workoutError) throw workoutError;
+
+  //     // 3️⃣ Insert workout exercises (ordered)
+  //     const exercisesPayload = workoutExercises.map((we, index) => ({
+  //       workout_id: workout.id,
+  //       exercise_id: we.exercise.folder,
+  //       name:
+  //         we.exercise.jsonContents?.[0]?.content?.name ||
+  //         we.exercise.folder.replace(/_/g, " "),
+  //       notes: we.notes,
+  //       rest_timer: we.restTimer,
+  //       position: index,
+  //     }));
+
+  //     const { data: insertedExercises, error: exercisesError } = await supabase
+  //       .from("workout_exercises")
+  //       .insert(exercisesPayload)
+  //       .select();
+
+  //     if (exercisesError) throw exercisesError;
+
+  //     // 4️⃣ Insert sets
+  //     // const setsPayload = insertedExercises.flatMap((ex, index) => {
+  //     //   const original = workoutExercises[index];
+
+  //     //   return original.sets.map((set, i) => ({
+  //     //     workout_exercise_id: ex.id,
+  //     //     set_number: i + 1,
+  //     //     weight: set.weight,
+  //     //     reps: set.repType === "reps" ? set.reps : null,
+  //     //     rep_range_min:
+  //     //       set.repType === "repRange" ? set.repRangeMin : null,
+  //     //     rep_range_max:
+  //     //       set.repType === "repRange" ? set.repRangeMax : null,
+  //     //   }));
+  //     // });
+
+  //     const setsPayload = insertedExercises.flatMap((ex) => {
+  //       const original = workoutExercises.find(
+  //         (we) => we.exercise.folder === ex.exercise_id,
+  //       );
+
+  //       if (!original) return [];
+
+  //       return original.sets.map((set, i) => ({
+  //         workout_exercise_id: ex.id,
+  //         set_number: i + 1,
+  //         weight: set.weight,
+  //         reps: set.repType === "reps" ? set.reps : null,
+  //         rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
+  //         rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
+  //       }));
+  //     });
+
+  //     console.log("setsPayload", setsPayload);
+
+  //     if (setsPayload.length > 0) {
+  //       const { error: setsError } = await supabase
+  //         .from("sets")
+  //         .insert(setsPayload);
+
+  //       if (setsError) throw setsError;
+  //     }
+
+  //     // ✅ Success
+  //     console.log("Workout saved successfully!");
+
+  //     // Optional: reset state or close modal
+  //     closeModal();
+  //   } catch (err) {
+  //     console.error("Error saving workout:", err);
+  //     alert("Failed to save workout");
+  //   }
+  // };
+
+  // const filteredExercises = exercises.filter((exercise) => {
+  //   console.log("🚀 ~ CreateWorkoutModal ~ exercise:", exercise)
+  //   return exercise.folder.toLowerCase().includes(searchTerm.toLowerCase());
+  // },
+  // );
+
+  const handleSaveWorkout = async () => {
+    try {
+      if (!workoutName.trim()) {
+        alert("Workout name is required");
+        return;
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("User not authenticated");
+      }
+
+      let workoutId: string;
+
+      if (isEditing && workoutToEdit) {
+        // Update existing workout
+        const { data: workout, error: workoutError } = await supabase
+          .from("workouts")
+          .update({
+            name: workoutName,
+          })
+          .eq("id", workoutToEdit.id)
+          .select()
+          .single();
+
+        if (workoutError) throw workoutError;
+        workoutId = workout.id;
+
+        // Delete existing exercises and sets
+        const { error: deleteError } = await supabase
+          .from("workout_exercises")
+          .delete()
+          .eq("workout_id", workoutId);
+
+        if (deleteError) throw deleteError;
+
+        // Insert updated exercises and sets
+        await insertExercisesAndSets(workoutId, user.id);
+      } else {
+        // Create new workout
+        const { data: workout, error: workoutError } = await supabase
+          .from("workouts")
+          .insert({
+            user_id: user.id,
+            name: workoutName,
+          })
+          .select()
+          .single();
+
+        if (workoutError) throw workoutError;
+        workoutId = workout.id;
+
+        await insertExercisesAndSets(workoutId, user.id);
+      }
+
+      closeModal();
+    } catch (err) {
+      console.error("Error saving workout:", err);
+      alert("Failed to save workout");
+    }
+  };
+
+  // Helper function to insert exercises and sets
+  const insertExercisesAndSets = async (workoutId: string, userId: string) => {
+    // Insert workout exercises
+    const exercisesPayload = workoutExercises.map((we, index) => ({
+      workout_id: workoutId,
+      exercise_id: we.exercise.folder,
+      name:
+        we.exercise.jsonContents?.[0]?.content?.name ||
+        we.exercise.folder.replace(/_/g, " "),
+      notes: we.notes,
+      rest_timer: we.restTimer,
+      position: index,
+    }));
+
+    const { data: insertedExercises, error: exercisesError } = await supabase
+      .from("workout_exercises")
+      .insert(exercisesPayload)
+      .select();
+
+    if (exercisesError) throw exercisesError;
+
+    // Insert sets
+    const setsPayload = insertedExercises.flatMap((ex) => {
+      const original = workoutExercises.find(
+        (we) => we.exercise.folder === ex.exercise_id,
+      );
+
+      if (!original) return [];
+
+      return original.sets.map((set, i) => ({
+        workout_exercise_id: ex.id,
+        set_number: i + 1,
+        weight: set.weight,
+        reps: set.repType === "reps" ? set.reps : null,
+        rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
+        rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
+      }));
+    });
+
+    if (setsPayload.length > 0) {
+      const { error: setsError } = await supabase
+        .from("sets")
+        .insert(setsPayload);
+
+      if (setsError) throw setsError;
+    }
+  };
+
+  const filteredExercises = exercises.filter((exercise) => {
+    const searchLower = searchTerm.toLowerCase();
+    const exerciseContent = exercise.jsonContents?.[0]?.content;
+
+    if (!exerciseContent) return false;
+
+    // Combine all searchable fields into an array of strings to check
+    const searchableText = [
+      exercise.folder,
+      exerciseContent.name,
+      exerciseContent.force,
+      exerciseContent.level,
+      exerciseContent.mechanic,
+      exerciseContent.equipment,
+      exerciseContent.category,
+      ...(exerciseContent.primaryMuscles || []),
+      ...(exerciseContent.secondaryMuscles || []),
+    ];
+
+    // Check if any field contains the search term
+    return searchableText.some((field) =>
+      field?.toString().toLowerCase().includes(searchLower),
+    );
+  });
 
   return (
     <>
@@ -299,7 +652,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                 onChange={(e) => setWorkoutName(e.target.value)}
               />
 
-              <div className="rounded-lg overflow-y-auto mt-2  h-[50vh] max-h-[90vh] ">
+              <div className="rounded-lg overflow-y-auto mt-2  h-[50vh] max-h-[50vh]">
                 {selectedExercises.length === 0 ? (
                   <div className="bg-accent rounded-xl px-3 py-4">
                     <p className="font-bold">No exercises added yet</p>
@@ -308,429 +661,54 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4 rounded-lg">
-                    {selectedExercises.map((exercise) => {
-                      const workoutExercise = workoutExercises.find(
-                        (we) => we.exercise.folder === exercise.folder,
-                      );
-                      const setForm = newSetForm[exercise.folder];
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={selectedExercises.map((e) => e.folder)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-4 rounded-lg">
+                        {selectedExercises.map((exercise) => {
+                          const workoutExercise = workoutExercises.find(
+                            (we) => we.exercise.folder === exercise.folder,
+                          );
+                          const setForm = newSetForm[exercise.folder];
 
-                      return (
-                        <div
-                          key={exercise.folder}
-                          className="flex flex-col gap-4 bg-accent rounded-xl px-3 py-4"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center w-full gap-2">
-                              <div>
-                                <GripVertical size={18} />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-shrink-0">
-                                  {exercise.images[0] && (
-                                    <img
-                                      src={exercise.images[0]}
-                                      alt={exercise.folder}
-                                      className="w-10 h-10 rounded-full object-cover grayscale-100"
-                                    />
-                                  )}
-                                </div>
-                                <span className="font-medium">
-                                  {exercise.folder.replace(/_/g, " ")}
-                                </span>
-                              </div>
-                            </div>
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <EllipsisVertical
-                                  size={18}
-                                  className="cursor-pointer"
-                                />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                className="w-40"
-                                align="start"
-                              >
-                                <DropdownMenuGroup>
-                                  <DropdownMenuItem
-                                    onClick={() => removeExercise(exercise)}
-                                  >
-                                    Remove
-                                  </DropdownMenuItem>
-                                </DropdownMenuGroup>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          {/* Notes */}
-                          <div className="w-full">
-                            <h2 className="text-sm font-medium mb-2">Notes</h2>
-                            <Input
-                              placeholder="Any notes"
-                              value={workoutExercise?.notes || ""}
-                              onChange={(e) =>
-                                updateWorkoutExercise(exercise.folder, {
-                                  notes: e.target.value,
-                                })
-                              }
+                          return (
+                            <SortableExerciseItem
+                              key={exercise.folder}
+                              exercise={exercise}
+                              workoutExercise={workoutExercise!}
+                              setForm={setForm}
+                              updateWorkoutExercise={updateWorkoutExercise}
+                              updateSet={updateSet}
+                              addSet={addSet}
+                              removeSet={removeSet}
+                              updateSetForm={updateSetForm}
+                              removeExercise={removeExercise}
+                              onSetDragEnd={handleSetDragEnd}
+                              onSetDragStart={handleSetDragStart}
+                              sensors={sensors}
                             />
-                          </div>
-
-                          {/* Rest Timer */}
-                          <div className="w-full">
-                            <h2 className="text-sm font-medium mb-2">
-                              Rest Timer
-                            </h2>
-                            <Select
-                              value={workoutExercise?.restTimer || "off"}
-                              onValueChange={(value) =>
-                                updateWorkoutExercise(exercise.folder, {
-                                  restTimer: value,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="w-full max-w-48">
-                                <SelectValue placeholder="Select a timer" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectLabel>Rest Timer</SelectLabel>
-                                  <SelectItem value="off">Off</SelectItem>
-                                  <SelectItem value="30">00:30</SelectItem>
-                                  <SelectItem value="60">01:00</SelectItem>
-                                  <SelectItem value="90">01:30</SelectItem>
-                                  <SelectItem value="120">02:00</SelectItem>
-                                  <SelectItem value="150">02:30</SelectItem>
-                                  <SelectItem value="300">05:00</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Display existing sets - now editable */}
-                          {workoutExercise?.sets &&
-                            workoutExercise.sets.length > 0 && (
-                              <div className="w-full">
-                                <div className="space-y-3">
-                                  {workoutExercise.sets.map((set, setIndex) => (
-                                    <div
-                                      key={setIndex}
-                                      className="flex flex-col gap-2 p-3 bg-background rounded-lg"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-medium">
-                                          Set {setIndex + 1}
-                                        </h3>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() =>
-                                            removeSet(exercise.folder, setIndex)
-                                          }
-                                          className="p-0"
-                                        >
-                                          <Trash2 size={16} />
-                                        </Button>
-                                      </div>
-                                      <div className="w-full flex justify-between items-center gap-2">
-                                        <div className="w-fit flex flex-col">
-                                          <h2 className="text-sm">Set</h2>
-                                          <Input
-                                            className="w-12"
-                                            type="number"
-                                            disabled
-                                            value={setIndex + 1}
-                                          />
-                                        </div>
-                                        <div className="w-fit">
-                                          <h2 className="text-sm">kgs</h2>
-                                          <Input
-                                            type="number"
-                                            placeholder="0"
-                                            value={set.weight || ""}
-                                            onChange={(e) =>
-                                              updateSet(
-                                                exercise.folder,
-                                                setIndex,
-                                                {
-                                                  weight:
-                                                    parseFloat(
-                                                      e.target.value,
-                                                    ) || 0,
-                                                },
-                                              )
-                                            }
-                                            className="w-24"
-                                          />
-                                        </div>
-                                        <div>
-                                          <div className="flex items-center gap-1">
-                                            <h2 className="text-sm">Reps</h2>
-                                            <Select
-                                              value={set.repType}
-                                              onValueChange={(
-                                                value: "reps" | "repRange",
-                                              ) => {
-                                                if (value === "reps") {
-                                                  updateSet(
-                                                    exercise.folder,
-                                                    setIndex,
-                                                    {
-                                                      repType: "reps",
-                                                      reps: set.reps || 0,
-                                                      repRangeMin: undefined,
-                                                      repRangeMax: undefined,
-                                                    },
-                                                  );
-                                                } else {
-                                                  updateSet(
-                                                    exercise.folder,
-                                                    setIndex,
-                                                    {
-                                                      repType: "repRange",
-                                                      repRangeMin:
-                                                        set.repRangeMin || 0,
-                                                      repRangeMax:
-                                                        set.repRangeMax || 0,
-                                                      reps: undefined,
-                                                    },
-                                                  );
-                                                }
-                                              }}
-                                            >
-                                              <SelectTrigger
-                                                size="sm"
-                                                className="bg-transparent! border-0 w-auto"
-                                              >
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectGroup>
-                                                  <SelectLabel>
-                                                    Select rep type
-                                                  </SelectLabel>
-                                                  <SelectItem value="reps">
-                                                    Reps
-                                                  </SelectItem>
-                                                  <SelectItem value="repRange">
-                                                    Rep Range
-                                                  </SelectItem>
-                                                </SelectGroup>
-                                              </SelectContent>
-                                            </Select>
-                                          </div>
-                                          {set.repType === "reps" ? (
-                                            <Input
-                                              type="number"
-                                              placeholder="0"
-                                              value={set.reps || ""}
-                                              onChange={(e) =>
-                                                updateSet(
-                                                  exercise.folder,
-                                                  setIndex,
-                                                  {
-                                                    reps:
-                                                      parseInt(
-                                                        e.target.value,
-                                                      ) || 0,
-                                                  },
-                                                )
-                                              }
-                                              className="w-24"
-                                            />
-                                          ) : (
-                                            <div className="flex gap-2 items-center">
-                                              <Input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={set.repRangeMin || ""}
-                                                onChange={(e) =>
-                                                  updateSet(
-                                                    exercise.folder,
-                                                    setIndex,
-                                                    {
-                                                      repRangeMin:
-                                                        parseInt(
-                                                          e.target.value,
-                                                        ) || 0,
-                                                    },
-                                                  )
-                                                }
-                                                className="w-20"
-                                              />
-                                              <span>-</span>
-                                              <Input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={set.repRangeMax || ""}
-                                                onChange={(e) =>
-                                                  updateSet(
-                                                    exercise.folder,
-                                                    setIndex,
-                                                    {
-                                                      repRangeMax:
-                                                        parseInt(
-                                                          e.target.value,
-                                                        ) || 0,
-                                                    },
-                                                  )
-                                                }
-                                                className="w-20"
-                                              />
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                          {/* Add new set form */}
-                          <div className="w-full border-t pt-4">
-                            <div className="w-full flex justify-between items-center gap-2">
-                              <div className="w-fit flex flex-col">
-                                <h2 className="text-sm">Set</h2>
-                                <Input
-                                  className="w-20"
-                                  type="number"
-                                  placeholder={
-                                    workoutExercise?.sets.length
-                                      ? (
-                                          workoutExercise.sets.length + 1
-                                        ).toString()
-                                      : "1"
-                                  }
-                                  disabled
-                                  value={
-                                    workoutExercise?.sets.length
-                                      ? workoutExercise.sets.length + 1
-                                      : 1
-                                  }
-                                />
-                              </div>
-                              <div className="w-fit">
-                                <h2 className="text-sm">kgs</h2>
-                                <Input
-                                  type="number"
-                                  placeholder="0"
-                                  value={setForm?.weight || ""}
-                                  onChange={(e) =>
-                                    updateSetForm(
-                                      exercise.folder,
-                                      "weight",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-24"
-                                />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1">
-                                  <h2 className="text-sm">Reps</h2>
-                                  <Select
-                                    value={setForm?.repType || "reps"}
-                                    onValueChange={(
-                                      value: "reps" | "repRange",
-                                    ) =>
-                                      updateSetForm(
-                                        exercise.folder,
-                                        "repType",
-                                        value,
-                                      )
-                                    }
-                                  >
-                                    <SelectTrigger
-                                      size="sm"
-                                      className="bg-transparent! border-0 w-auto"
-                                    >
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectGroup>
-                                        <SelectLabel>
-                                          Select rep type
-                                        </SelectLabel>
-                                        <SelectItem value="reps">
-                                          Reps
-                                        </SelectItem>
-                                        <SelectItem value="repRange">
-                                          Rep Range
-                                        </SelectItem>
-                                      </SelectGroup>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                {setForm?.repType === "reps" ? (
-                                  <Input
-                                    type="number"
-                                    placeholder="0"
-                                    value={setForm?.reps || ""}
-                                    onChange={(e) =>
-                                      updateSetForm(
-                                        exercise.folder,
-                                        "reps",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-24"
-                                  />
-                                ) : (
-                                  <div className="flex gap-2 items-center">
-                                    <Input
-                                      type="number"
-                                      placeholder="Min"
-                                      value={setForm?.repRangeMin || ""}
-                                      onChange={(e) =>
-                                        updateSetForm(
-                                          exercise.folder,
-                                          "repRangeMin",
-                                          e.target.value,
-                                        )
-                                      }
-                                      className="w-20"
-                                    />
-                                    <span>-</span>
-                                    <Input
-                                      type="number"
-                                      placeholder="Max"
-                                      value={setForm?.repRangeMax || ""}
-                                      onChange={(e) =>
-                                        updateSetForm(
-                                          exercise.folder,
-                                          "repRangeMax",
-                                          e.target.value,
-                                        )
-                                      }
-                                      className="w-20"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              onClick={() => addSet(exercise.folder)}
-                              className="w-full mt-3"
-                            >
-                              Add set
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </div>
 
               {selectedExercises.length > 0 && (
-                <button
+                <Button
                   onClick={handleSaveWorkout}
-                  className="w-full bg-yellow-300 text-black font-semibold py-2 px-4 rounded-lg transition-colors hover:bg-yellow-400 mt-4"
+                  className="w-full bg-orange-600  font-semibold rounded-lg transition-colors mt-4"
                 >
                   Create Workout ({selectedExercises.length} exercises)
-                </button>
+                </Button>
               )}
             </div>
 
@@ -747,83 +725,96 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                 </div>
 
                 <div className="border rounded-lg p-4 max-h-[600px] overflow-y-auto">
-                  {loading ? (
+                  {isLoadingWorkout ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-2"></div>
-                        <p className="text-gray-500">Loading exercises...</p>
+                        <p className="text-gray-500">Loading workout...</p>
                       </div>
                     </div>
-                  ) : error ? (
-                    <div className="text-center py-8">
-                      <p className="text-red-500">Error: {error}</p>
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="mt-2 text-blue-500 hover:text-blue-700 text-sm"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  ) : filteredExercises.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">
-                      No exercises found
-                    </p>
                   ) : (
-                    <div className="flex flex-col gap-2">
-                      {filteredExercises.map((exercise) => {
-                        const exerciseData =
-                          exercise.jsonContents?.[0]?.content;
-                        const primaryMuscles =
-                          exerciseData?.primaryMuscles?.join(", ") || "N/A";
-
-                        return (
-                          <motion.div
-                            key={exercise.folder}
-                            whileHover={{ scale: 1.02 }}
-                            className="flex items-center justify-start py-1 overflow-hidden cursor-pointer w-full"
-                            onClick={() => addExercise(exercise)}
+                    <>
+                      {loading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-2"></div>
+                            <p className="text-gray-500">
+                              Loading exercises...
+                            </p>
+                          </div>
+                        </div>
+                      ) : error ? (
+                        <div className="text-center py-8">
+                          <p className="text-red-500">Error: {error}</p>
+                          <button
+                            onClick={() => window.location.reload()}
+                            className="mt-2 text-blue-500 hover:text-blue-700 text-sm"
                           >
-                            <div className="flex items-center justify-center w-full">
-                              <div className="flex-shrink-0">
-                                {exercise.images[0] && (
-                                  <img
-                                    src={exercise.images[0]}
-                                    alt={exercise.folder}
-                                    className="w-10 h-10 rounded-full object-cover grayscale-100"
-                                  />
-                                )}
-                              </div>
+                            Try again
+                          </button>
+                        </div>
+                      ) : filteredExercises.length === 0 ? (
+                        <p className="text-gray-500 text-center py-8">
+                          No exercises found
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {filteredExercises.map((exercise) => {
+                            const exerciseData =
+                              exercise.jsonContents?.[0]?.content;
+                            const primaryMuscles =
+                              exerciseData?.primaryMuscles?.join(", ") || "N/A";
 
-                              <div className="flex items-center justify-between w-full ml-3">
-                                <div className="flex-1">
-                                  <div className="flex justify-between items-center">
-                                    <h4 className="text-[14px] font-medium">
-                                      {exerciseData?.name ||
-                                        exercise.folder.replace(/_/g, " ")}
-                                    </h4>
+                            return (
+                              <motion.div
+                                key={exercise.folder}
+                                whileHover={{ scale: 1.02 }}
+                                className="flex items-center justify-start py-1 overflow-hidden cursor-pointer w-full"
+                                onClick={() => addExercise(exercise)}
+                              >
+                                <div className="flex items-center justify-center w-full">
+                                  <div className="flex-shrink-0">
+                                    {exercise.images[0] && (
+                                      <img
+                                        src={exercise.images[0]}
+                                        alt={exercise.folder}
+                                        className="w-10 h-10 rounded-full object-cover grayscale-100"
+                                      />
+                                    )}
                                   </div>
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    <span className="text-yellow-300 font-medium text-[10px] rounded capitalize">
-                                      {primaryMuscles}
-                                    </span>
+
+                                  <div className="flex items-center justify-between w-full ml-3">
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-center">
+                                        <h4 className="text-[14px] font-medium">
+                                          {exerciseData?.name ||
+                                            exercise.folder.replace(/_/g, " ")}
+                                        </h4>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        <span className="text-orange-600 font-medium text-[10px] rounded capitalize">
+                                          {primaryMuscles}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      {selectedExercises.find(
+                                        (e) => e.folder === exercise.folder,
+                                      ) && (
+                                        <CircleCheck
+                                          size={20}
+                                          className="fill-yellow-300 stroke-black [&>circle]:stroke-none"
+                                        />
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                                <div>
-                                  {selectedExercises.find(
-                                    (e) => e.folder === exercise.folder,
-                                  ) && (
-                                    <CircleCheck
-                                      size={20}
-                                      className="fill-yellow-300 stroke-black [&>circle]:stroke-none"
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

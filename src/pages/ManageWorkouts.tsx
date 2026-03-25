@@ -1,0 +1,325 @@
+import CreateWorkoutModal from "@/components/create-workout-modal";
+import { Button } from "@/components/ui/button";
+import supabase from "@/lib/supabase";
+import type { Workout } from "@/lib/types";
+import React, { useEffect, useState } from "react";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { EllipsisVertical } from "lucide-react";
+const ManageWorkouts = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [hoveredWorkout, setHoveredWorkout] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [workoutToEdit, setWorkoutToEdit] = useState<Workout | null>(null);
+
+  useEffect(() => {
+    // Check if device is mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1019);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl animate-pulse"
+        >
+          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3"></div>
+          <div className="space-y-2">
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  useEffect(() => {
+    let subscription: any;
+
+    const fetchWorkouts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: workoutsData, error } = await supabase
+          .from("workouts")
+          .select(
+            `
+            id,
+            name,
+            created_at,
+            workout_exercises(
+              id,
+              exercise_id,
+              name,
+              notes,
+              rest_timer,
+              position,
+              sets(
+                id,
+                set_number,
+                weight,
+                reps,
+                rep_range_min,
+                rep_range_max
+              )
+            )
+          `,
+          )
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setWorkouts(workoutsData || []);
+
+        console.log("workoutsData", workoutsData);
+
+        // 2️⃣ subscribe to real-time changes on workouts
+        subscription = supabase
+          .channel(`public:workouts:user_id=eq.${user.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "workouts",
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              console.log("Realtime workout update:", payload);
+              setWorkouts((prev) => {
+                switch (payload.eventType) {
+                  case "INSERT":
+                    return [payload.new, ...prev];
+                  case "UPDATE":
+                    return prev.map((w) =>
+                      w.id === payload.new.id ? payload.new : w,
+                    );
+                  case "DELETE":
+                    return prev.filter((w) => w.id !== payload.old.id);
+                  default:
+                    return prev;
+                }
+              });
+            },
+          )
+          .subscribe();
+      } catch (err) {
+        console.error("Failed to fetch workouts:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load workouts",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWorkouts();
+
+    return () => {
+      if (subscription) supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  const openModal = () => {
+    setWorkoutToEdit(null); // Reset when creating new
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (workout: Workout) => {
+    setWorkoutToEdit(workout);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setWorkoutToEdit(null);
+  };
+
+  return (
+    <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
+      <div className="flex items-center justify-between ">
+        <h2 className="text-orange-600 font-black text-2xl tracking-tight">
+          Manage workouts
+        </h2>
+        <Button onClick={openModal} className="bg-orange-600 text-foreground">
+          New Workout
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <CreateWorkoutModal
+            closeModal={closeModal}
+            workoutToEdit={workoutToEdit} // Pass the workout to edit
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="mt-4 flex items-center w-full">
+        <div className="w-full">
+          {/* Loading State */}
+          {isLoading && <LoadingSkeleton />}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-3xl">
+              <p className="text-red-600 dark:text-red-400 text-sm">
+                Error: {error}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-2 text-sm text-red-600 dark:text-red-400 underline"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Workouts List */}
+          {!isLoading && !error && workouts.length === 0 && (
+            <div className="p-8 text-center bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl">
+              <p className="text-gray-500 dark:text-gray-400">
+                No workouts yet. Create your first workout!
+              </p>
+            </div>
+          )}
+
+          <div className="lg:grid-cols-2 grid-cols-1 grid gap-4">
+            {!isLoading &&
+              !error &&
+              workouts.map((workout) => {
+                console.log("🚀 ~ ManageWorkouts ~ workout:", workout);
+                const isHovered = hoveredWorkout === workout.id;
+
+                return (
+                  <motion.div
+                    key={workout.id}
+                    className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl mb-2 flex items-start justify-between"
+                    onHoverStart={() =>
+                      !isMobile && setHoveredWorkout(workout.id)
+                    }
+                    onHoverEnd={() => !isMobile && setHoveredWorkout(null)}
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                    onClick={() => openEditModal(workout)}
+                  >
+                    <div className="w-full flex flex-col">
+                      <h3 className="font-bold tracking-tight truncate">
+                        {workout.name}
+                      </h3>
+                      <div className="mt-3 flex items-center text-sm">
+                        <p className="mr-1 whitespace-nowrap">
+                          {workout.workout_exercises?.length} Exercises •
+                        </p>
+                        <p className="truncate">
+                          {workout.workout_exercises
+                            .slice(0, 2)
+                            .map((exercise) => exercise.name)
+                            .join(", ")}
+                          {workout.workout_exercises?.length > 2 && " ..."}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      {isMobile ? (
+                        <div className="flex items-center gap-2">
+                          <motion.div
+                            className=" w-fit cursor-pointer"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.2 }}
+                            whileHover={{ scale: 1.1 }}
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <EllipsisVertical
+                                  size={18}
+                                  className="cursor-pointer"
+                                />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                className="w-40"
+                                align="start"
+                              >
+                                <DropdownMenuGroup>
+                                  <DropdownMenuItem>Remove</DropdownMenuItem>
+                                </DropdownMenuGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </motion.div>
+                        </div>
+                      ) : (
+                        <AnimatePresence>
+                          {isHovered && (
+                            <div className="flex items-center gap-2">
+                              <motion.div
+                                className=" w-fit cursor-pointer"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.2 }}
+                                whileHover={{ scale: 1.1 }}
+                              >
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <EllipsisVertical
+                                      size={18}
+                                      className="cursor-pointer"
+                                    />
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    className="w-40"
+                                    align="start"
+                                  >
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuItem>
+                                        Remove
+                                      </DropdownMenuItem>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </motion.div>
+                            </div>
+                          )}
+                        </AnimatePresence>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ManageWorkouts;

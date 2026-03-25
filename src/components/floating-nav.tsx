@@ -100,7 +100,7 @@ const FloatingNav = () => {
                 <Icon
                   className={`stroke-[1.75px] ${active ? "stroke-yellow-300" : "stroke-white"} `}
                   size={20}
-                  // stroke={active ? "bg-yellow-300" : "#7a7a78"}
+                  // stroke={active ? "bg-orange-600" : "#7a7a78"}
                 />
               </Link>
             );
