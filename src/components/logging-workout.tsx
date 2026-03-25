@@ -1,11 +1,14 @@
-import type { ActiveWorkout } from '@/lib/types'
-import React from 'react'
+import type { ActiveWorkout } from "@/lib/types";
+import { useLogWorkout } from "@/provider/LogWorkoutProvider";
+import React from "react";
 
 interface LoggingWorkoutProps {
-  activeWorkout: ActiveWorkout
+  activeWorkout: ActiveWorkout;
 }
 
 const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
+  console.log("🚀 ~ LoggingWorkout ~ activeWorkout:", activeWorkout)
+  const { updateSet } = useLogWorkout();
   return (
     <div className="space-y-6 p-4">
       <h2 className="text-lg font-bold text-gray-700">
@@ -22,21 +25,37 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
             {exercise.sets.map((set, setIndex) => (
               <div
                 key={set.id}
-                className="flex justify-between items-center  p-2 rounded shadow-sm"
+                className="flex justify-between items-center p-2 rounded shadow-sm"
               >
-                <span className="font-medium">Set {set.set_number}</span>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={set.checked || false}
+                    onChange={() =>
+                      updateSet(exercise.id, set.id, {
+                        checked: !set.checked,
+                      })
+                    }
+                  />
+
+                  <span className="font-medium">Set {set.set_number}</span>
+                </div>
+
                 <span>
                   {set.reps !== null
                     ? `${set.reps} reps`
                     : `Rep Range: ${set.rep_range_min}-${set.rep_range_max}`}
                 </span>
+
                 <span>{set.weight} kg</span>
               </div>
             ))}
           </div>
 
           {exercise.notes && (
-            <p className="mt-2 text-sm text-gray-500">Notes: {exercise.notes}</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Notes: {exercise.notes}
+            </p>
           )}
 
           {exercise.rest_timer && (
@@ -47,7 +66,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
         </div>
       ))}
     </div>
-  )
-}
+  );
+};
 
-export default LoggingWorkout
+export default LoggingWorkout;
