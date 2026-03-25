@@ -34,6 +34,7 @@ const LogWorkoutContext = createContext<LogWorkoutContextType | undefined>(
     undefined
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLogWorkout = () => {
     const context = useContext(LogWorkoutContext);
     if (!context) {
