@@ -55,12 +55,12 @@ const SortableExerciseItem: React.FC<{
 }> = ({
   exercise,
   workoutExercise,
-  setForm,
+
   updateWorkoutExercise,
   updateSet,
   addSet,
   removeSet,
-  updateSetForm,
+
   removeExercise,
   onSetDragEnd,
   onSetDragStart,

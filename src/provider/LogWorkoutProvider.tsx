@@ -44,6 +44,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   );
   const [elapsedTime, setElapsedTime] = useState(0);
 
+  console.log("activeWorkout 🍆" , activeWorkout)
+
   useEffect(() => {
     const fetchActiveWorkout = async () => {
       const { data, error } = await supabase
@@ -76,7 +78,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         .eq("status", "in_progress")
         .order("started_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error || !data) return;
 
@@ -454,10 +456,74 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //   );
   // };
 
+  // const addExercise = async (exercise: WorkoutExercise) => {
+  //   if (!activeWorkout) return;
+
+  //   // Insert the exercise into the database
+  //   const { data: newExercise, error } = await supabase
+  //     .from("workout_session_exercises")
+  //     .insert([
+  //       {
+  //         workout_session_id: activeWorkout.id,
+  //         name: exercise.name,
+  //         notes: exercise.notes,
+  //         rest_timer: exercise.rest_timer,
+  //         exercise_image: exercise.exercise_image,
+  //         order_index: activeWorkout.exercises.length,
+  //       },
+  //     ])
+  //     .select()
+  //     .single();
+
+  //   if (error || !newExercise) {
+  //     console.error("Error adding exercise:", error);
+  //     return;
+  //   }
+
+  //   // Insert sets for the exercise
+  //   const setsToInsert = exercise.sets.map((set, index) => ({
+  //     exercise_id: newExercise.id,
+  //     set_number: index + 1,
+  //     weight: set.weight,
+  //     reps: set.reps,
+  //     rep_range_min: set.rep_range_min,
+  //     rep_range_max: set.rep_range_max,
+  //     checked: false,
+  //   }));
+
+  //   const { error: setError } = await supabase
+  //     .from("workout_sets")
+  //     .insert(setsToInsert);
+
+  //   if (setError) {
+  //     console.error("Error inserting sets:", setError);
+  //     return;
+  //   }
+
+  //   // Update local state with the new exercise (with real IDs)
+  //   setActiveWorkout((prev) =>
+  //     prev
+  //       ? {
+  //           ...prev,
+  //           exercises: [
+  //             ...prev.exercises,
+  //             {
+  //               ...exercise,
+  //               id: newExercise.id,
+  //               sets: setsToInsert.map((set, index) => ({
+  //                 ...set,
+  //                 id: `temp-${Date.now()}-${index}`,
+  //               })),
+  //             },
+  //           ],
+  //         }
+  //       : prev
+  //   );
+  // };
 
   const addExercise = async (exercise: WorkoutExercise) => {
     if (!activeWorkout) return;
-  
+
     // Insert the exercise into the database
     const { data: newExercise, error } = await supabase
       .from("workout_session_exercises")
@@ -473,13 +539,13 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       ])
       .select()
       .single();
-  
+
     if (error || !newExercise) {
       console.error("Error adding exercise:", error);
       return;
     }
-  
-    // Insert sets for the exercise
+
+    // Insert sets for the exercise and get the returned data
     const setsToInsert = exercise.sets.map((set, index) => ({
       exercise_id: newExercise.id,
       set_number: index + 1,
@@ -489,17 +555,18 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       rep_range_max: set.rep_range_max,
       checked: false,
     }));
-  
-    const { error: setError } = await supabase
+
+    const { data: insertedSets, error: setError } = await supabase
       .from("workout_sets")
-      .insert(setsToInsert);
-  
+      .insert(setsToInsert)
+      .select(); // Add .select() to get the inserted data with real IDs
+
     if (setError) {
       console.error("Error inserting sets:", setError);
       return;
     }
-  
-    // Update local state with the new exercise (with real IDs)
+
+    // Update local state with the new exercise and its sets (with real IDs)
     setActiveWorkout((prev) =>
       prev
         ? {
@@ -509,55 +576,112 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
               {
                 ...exercise,
                 id: newExercise.id,
-                sets: setsToInsert.map((set, index) => ({
-                  ...set,
-                  id: `temp-${Date.now()}-${index}`,
-                })),
+                sets: insertedSets, // Use the real sets from the database
               },
             ],
           }
-        : prev
+        : prev,
     );
   };
 
+  const addSet = async (exerciseId: string, newSet: any) => {
+    if (!activeWorkout) return;
 
-
-const addSet = (exerciseId: string, newSet: any) => {
-  setActiveWorkout(prev => {
-    if (!prev) return prev;
-    
-    return {
-      ...prev,
-      exercises: prev.exercises.map(exercise => {
-        if (exercise.id !== exerciseId) return exercise;
-        
-        return {
-          ...exercise,
-          sets: [...exercise.sets, newSet]
-        };
+    // Insert into database first to get a real ID
+    const { data: createdSet, error } = await supabase
+      .from("workout_sets")
+      .insert({
+        exercise_id: exerciseId,
+        set_number: newSet.set_number,
+        weight: newSet.weight,
+        reps: newSet.reps,
+        rep_range_min: newSet.rep_range_min,
+        rep_range_max: newSet.rep_range_max,
+        checked: false,
       })
-    };
-  });
-};
+      .select()
+      .single();
 
-const removeSet = (exerciseId: string, setId: string) => {
-  setActiveWorkout(prev => {
-    if (!prev) return prev;
-    
-    return {
-      ...prev,
-      exercises: prev.exercises.map(exercise => {
-        if (exercise.id !== exerciseId) return exercise;
-        
-        return {
-          ...exercise,
-          sets: exercise.sets.filter(set => set.id !== setId)
-        };
-      })
-    };
-  });
-};
+    if (error) {
+      console.error("Error adding set:", error);
+      return;
+    }
 
+    // Update local state with the real set from database
+    setActiveWorkout((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        exercises: prev.exercises.map((exercise) => {
+          if (exercise.id !== exerciseId) return exercise;
+
+          return {
+            ...exercise,
+            sets: [...exercise.sets, createdSet],
+          };
+        }),
+      };
+    });
+  };
+
+  const removeSet = (exerciseId: string, setId: string) => {
+    setActiveWorkout((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        exercises: prev.exercises.map((exercise) => {
+          if (exercise.id !== exerciseId) return exercise;
+
+          return {
+            ...exercise,
+            sets: exercise.sets.filter((set) => set.id !== setId),
+          };
+        }),
+      };
+    });
+  };
+
+  // const updateSet = async (
+  //   exerciseId: string,
+  //   setId: string,
+  //   data: Partial<Set>,
+  // ) => {
+  //   if (!activeWorkout) return;
+
+  //   // 🔥 Update locally
+  //   setActiveWorkout((prev) => {
+  //     if (!prev) return prev;
+  //     return {
+  //       ...prev,
+  //       exercises: prev.exercises.map((ex) =>
+  //         ex.id === exerciseId
+  //           ? {
+  //               ...ex,
+  //               sets: ex.sets.map((s) =>
+  //                 s.id === setId
+  //                   ? {
+  //                       ...s,
+  //                       ...data,
+  //                     }
+  //                   : s,
+  //               ),
+  //             }
+  //           : ex,
+  //       ),
+  //     };
+  //   });
+
+  //   const { data: dupdateSetData, error } = await supabase
+  //     .from("workout_sets")
+  //     .update(data)
+  //     .eq("id", setId);
+
+  //   if (error) {
+  //     console.error("Error updating set:", error);
+  //   }
+  // };
 
   const updateSet = async (
     exerciseId: string,
@@ -589,7 +713,7 @@ const removeSet = (exerciseId: string, setId: string) => {
       };
     });
 
-    const { data: dupdateSetData, error } = await supabase
+    const { error } = await supabase
       .from("workout_sets")
       .update(data)
       .eq("id", setId);
