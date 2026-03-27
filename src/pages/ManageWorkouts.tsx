@@ -94,6 +94,7 @@ const ManageWorkouts = () => {
               notes,
               rest_timer,
               position,
+              exercise_image,
               sets(
                 id,
                 set_number,
@@ -110,6 +111,8 @@ const ManageWorkouts = () => {
 
         if (error) throw error;
         setWorkouts(workoutsData || []);
+
+        console.log("workoutsData" , workoutsData)
 
 
 
@@ -313,7 +316,7 @@ const ManageWorkouts = () => {
           {/* Workouts List */}
           {!isLoading && !error && workouts.length === 0 && (
             <div className="p-8 text-center bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl">
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
                 No workouts yet. Create your first workout!
               </p>
             </div>
@@ -344,14 +347,14 @@ const ManageWorkouts = () => {
                       </h3>
                       <div className="mt-3 flex items-center text-sm">
                         <p className="mr-1 whitespace-nowrap">
-                          {workout.workout_exercises?.length} Exercises •
+                          {workout?.workout_exercises?.length} Exercises •
                         </p>
                         <p className="truncate">
-                          {workout.workout_exercises
+                          {workout?.workout_exercises
                             .slice(0, 2)
-                            .map((exercise) => exercise.name)
+                            ?.map((exercise) => exercise.name)
                             .join(", ")}
-                          {workout.workout_exercises?.length > 2 && " ..."}
+                          {workout?.workout_exercises?.length > 2 && " ..."}
                         </p>
                       </div>
                     </div>

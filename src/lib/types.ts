@@ -13,8 +13,6 @@ export type Goal = {
   description: string | null;
   user_id: string;
   goal_tags: GoalTag[];
-
-  // deadline stuff
   deadline_type: "date" | "daily" | "every_n_days";
   deadline_date: string | null;
   deadline_interval: number | null;
@@ -85,6 +83,7 @@ export interface Set {
   reps?: number;
   rep_range_min?: number;
   rep_range_max?: number;
+  checked?: boolean
 }
 
 export interface WorkoutExercise {
@@ -95,6 +94,8 @@ export interface WorkoutExercise {
   rest_timer: string;
   position: number;
   sets: Set[];
+  exercise_image?: string;
+  order_index?: string;
 }
 
 export interface Workout {
@@ -102,12 +103,14 @@ export interface Workout {
   name: string;
   created_at: string;
   exercises: WorkoutExercise[];
+  workout_exercises?: WorkoutExercise[];
 }
 
 
 export interface ActiveWorkout {
-    id?: string; // optional if it's a new workout
-    name: string;
-    startedAt: Date;
-    exercises: WorkoutExercise[];
+  id?: string;
+  workoutId?: string;
+  name: string;
+  startedAt: Date;
+  exercises: WorkoutExercise[];
 }

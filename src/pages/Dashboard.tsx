@@ -10,7 +10,8 @@ import { AnimatePresence } from "framer-motion";
 import { Outlet } from "react-router-dom";
 
 const Dashboard = () => {
-  const { startWorkoutModalOpen, openStartWorkoutModal, closeStartWorkoutModal, selectedWorkout, startWorkout } = useLogWorkout();
+  const { startWorkoutModalOpen, closeStartWorkoutModal, selectedWorkout } =
+    useLogWorkout();
   return (
     <AnimatePresence>
       <div className="min-h-screen relative flex h-full  ">
@@ -26,8 +27,8 @@ const Dashboard = () => {
         open={startWorkoutModalOpen}
         onClose={closeStartWorkoutModal}
         workout={selectedWorkout || undefined}
+        isEmptyWorkout={!selectedWorkout}
       />
-
     </AnimatePresence>
   );
 };

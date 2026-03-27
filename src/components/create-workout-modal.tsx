@@ -107,7 +107,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         const loadedExercises = data.workout_exercises.map((we: any) => ({
           exercise: {
             folder: we.exercise_id,
-            images: [], // You'll need to fetch these from your exercise library
+            images: we.exercise_image ? [we.exercise_image] : [], // You'll need to fetch these from your exercise library
             jsonContents: [], // You'll need to fetch these from your exercise library
           },
           notes: we.notes || "",
@@ -201,7 +201,13 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
           exercise: exercise,
           notes: "",
           restTimer: "off",
-          sets: [],
+          sets: [
+            {
+              weight: 0,
+              repType: "reps",
+              reps: 0,
+            },
+          ],
         },
       ]);
       initializeSetForm(exercise.folder);
@@ -239,56 +245,41 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const updateSet = (
     folder: string,
     setIndex: number,
-    updates: Partial<Set>,
+    updates: Partial<Set> | ((currentSet: Set) => Partial<Set>),
   ) => {
     setWorkoutExercises(
-      workoutExercises.map((we) =>
-        we.exercise.folder === folder
-          ? {
-            ...we,
-            sets: we.sets.map((set, index) =>
-              index === setIndex ? { ...set, ...updates } : set,
-            ),
-          }
-          : we,
-      ),
+      workoutExercises.map((we) => {
+        if (we.exercise.folder !== folder) return we;
+
+        return {
+          ...we,
+          sets: we.sets.map((set, index) => {
+            if (index !== setIndex) return set;
+
+            const newUpdates =
+              typeof updates === "function" ? updates(set) : updates;
+
+            return { ...set, ...newUpdates };
+          }),
+        };
+      }),
     );
   };
 
   const addSet = (folder: string) => {
-    const formData = newSetForm[folder];
-    if (!formData) return;
+    setWorkoutExercises((prev) =>
+      prev.map((we) => {
+        if (we.exercise.folder !== folder) return we;
 
-    const newSet: Set = {
-      weight: parseFloat(formData.weight) || 0,
-      repType: formData.repType,
-    };
+        const lastSet = we.sets[we.sets.length - 1];
 
-    if (formData.repType === "reps") {
-      newSet.reps = parseInt(formData.reps) || 0;
-    } else {
-      newSet.repRangeMin = parseInt(formData.repRangeMin) || 0;
-      newSet.repRangeMax = parseInt(formData.repRangeMax) || 0;
-    }
+        const newSet: Set = lastSet
+          ? { ...lastSet }
+          : { weight: 0, repType: "reps", reps: 0 };
 
-    setWorkoutExercises(
-      workoutExercises.map((we) =>
-        we.exercise.folder === folder
-          ? { ...we, sets: [...we.sets, newSet] }
-          : we,
-      ),
+        return { ...we, sets: [...we.sets, newSet] };
+      }),
     );
-
-    setNewSetForm((prev) => ({
-      ...prev,
-      [folder]: {
-        weight: "",
-        repType: "reps",
-        reps: "",
-        repRangeMin: "",
-        repRangeMax: "",
-      },
-    }));
   };
 
   const removeSet = (folder: string, setIndex: number) => {
@@ -440,16 +431,20 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   // Helper function to insert exercises and sets
   const insertExercisesAndSets = async (workoutId: string, userId: string) => {
     // Insert workout exercises
-    const exercisesPayload = workoutExercises.map((we, index) => ({
-      workout_id: workoutId,
-      exercise_id: we.exercise.folder,
-      name:
-        we.exercise.jsonContents?.[0]?.content?.name ||
-        we.exercise.folder.replace(/_/g, " "),
-      notes: we.notes,
-      rest_timer: we.restTimer,
-      position: index,
-    }));
+    const exercisesPayload = workoutExercises.map((we, index) => {
+      console.log("🚀 ~ insertExercisesAndSets ~ we:", we.exercise.images?.[0]);
+      return {
+        workout_id: workoutId,
+        exercise_id: we.exercise.folder,
+        name:
+          we.exercise.jsonContents?.[0]?.content?.name ||
+          we.exercise.folder.replace(/_/g, " "),
+        notes: we.notes,
+        rest_timer: we.restTimer,
+        position: index,
+        exercise_image: we.exercise.images?.[0] || null,
+      };
+    });
 
     const { data: insertedExercises, error: exercisesError } = await supabase
       .from("workout_exercises")
@@ -527,12 +522,12 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl  "
       >
-        <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4  ">
-          <div className="flex flex-col md:flex-row gap-6">
+        <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-4 m-4  ">
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Left Column - Workout Details */}
             <div className="flex-1  h-full">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg tracking-tight font-bold text-orange-600">
+                <h2 className="text-base tracking-tight font-bold text-orange-600">
                   New Workout
                 </h2>
               </div>
@@ -598,7 +593,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
               {selectedExercises.length > 0 && (
                 <Button
                   onClick={handleSaveWorkout}
-                  className="w-full bg-orange-600  font-semibold rounded-lg transition-colors mt-4"
+                  className="w-full bg-orange-600 text-foreground hover:bg-orange-600  font-semibold rounded-lg transition-colors mt-4"
                 >
                   Create Workout ({selectedExercises.length} exercises)
                 </Button>
@@ -617,12 +612,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                   />
                 </div>
 
-                <div className="border rounded-lg p-4 max-h-150 overflow-y-auto">
+                <div className=" bg-accent rounded-lg p-4 max-h-150 overflow-y-auto">
                   {isLoadingWorkout ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-2"></div>
-                        <p className="text-gray-500">Loading workout...</p>
+                        <p className="text-gray-500 text-sm">Loading workout...</p>
                       </div>
                     </div>
                   ) : (
@@ -630,8 +624,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                       {loading ? (
                         <div className="flex items-center justify-center py-8">
                           <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-2"></div>
-                            <p className="text-gray-500">
+                            <p className="text-gray-500 text-sm">
                               Loading exercises...
                             </p>
                           </div>
@@ -694,11 +687,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                                       {selectedExercises.find(
                                         (e) => e.folder === exercise.folder,
                                       ) && (
-                                          <CircleCheck
-                                            size={20}
-                                            className="fill-orange-600 stroke-white [&>circle]:stroke-none"
-                                          />
-                                        )}
+                                        <CircleCheck
+                                          size={20}
+                                          className="fill-orange-600 stroke-white [&>circle]:stroke-none"
+                                        />
+                                      )}
                                     </div>
                                   </div>
                                 </div>

@@ -5,15 +5,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const SortableSetItem: React.FC<{
   set: Set;
@@ -37,36 +28,24 @@ const SortableSetItem: React.FC<{
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const backgroundColor = setIndex % 2 === 0 ? "bg-background" : "bg-muted";
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="flex flex-col gap-2 p-3 bg-background rounded-lg"
+      className={`flex flex-col p-3 ${backgroundColor}`}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="grid grid-cols-4 px-2 items-center w-full  text-xs tracking-tight gap-2">
+        <div className="flex items-center gap-2  justify-start">
           <div {...listeners} className="cursor-grab active:cursor-grabbing">
-            <GripVertical size={16} />
+            <GripVertical size={14} />
           </div>
-          <h3 className="text-sm font-medium">Set {setIndex + 1}</h3>
+          <div className="w-fit flex flex-col gap-2 font-medium">{setIndex + 1}</div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => removeSet(folder, setIndex)}
-          className="p-0"
-        >
-          <Trash2 size={16} />
-        </Button>
-      </div>
-      <div className="w-full flex justify-between items-center gap-2">
-        <div className="w-fit flex flex-col gap-2">
-          <h2 className="text-sm">Set</h2>
-          <Input className="w-12" type="number" disabled value={setIndex + 1} />
-        </div>
-        <div className="w-fit flex flex-col gap-2">
-          <h2 className="text-sm">kgs</h2>
+
+        <div className=" flex flex-col gap-2 ">
           <Input
             type="number"
             placeholder="0"
@@ -76,47 +55,10 @@ const SortableSetItem: React.FC<{
                 weight: parseFloat(e.target.value) || 0,
               })
             }
-            className="w-24"
           />
         </div>
-        <div  className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm">Reps</h2>
-            <Select
-              value={set.repType}
-              onValueChange={(value: "reps" | "repRange") => {
-                if (value === "reps") {
-                  updateSet(folder, setIndex, {
-                    repType: "reps",
-                    reps: set.reps || 0,
-                    repRangeMin: undefined,
-                    repRangeMax: undefined,
-                  });
-                } else {
-                  updateSet(folder, setIndex, {
-                    repType: "repRange",
-                    repRangeMin: set.repRangeMin || 0,
-                    repRangeMax: set.repRangeMax || 0,
-                    reps: undefined,
-                  });
-                }
-              }}
-            >
-              <SelectTrigger
-                size="sm"
-                className="bg-transparent! border-0 w-auto"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Select rep type</SelectLabel>
-                  <SelectItem value="reps">Reps</SelectItem>
-                  <SelectItem value="repRange">Rep Range</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
+
+        <div className="flex flex-col gap-2">
           {set.repType === "reps" ? (
             <Input
               type="number"
@@ -127,7 +69,6 @@ const SortableSetItem: React.FC<{
                   reps: parseInt(e.target.value) || 0,
                 })
               }
-              className="w-24"
             />
           ) : (
             <div className="flex gap-2 items-center">
@@ -140,7 +81,6 @@ const SortableSetItem: React.FC<{
                     repRangeMin: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-20"
               />
               <span>-</span>
               <Input
@@ -152,10 +92,20 @@ const SortableSetItem: React.FC<{
                     repRangeMax: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-20"
               />
             </div>
           )}
+        </div>
+
+        <div className="flex items-center justify-end ">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => removeSet(folder, setIndex)}
+            className="p-0"
+          >
+            <Trash2 size={16} />
+          </Button>
         </div>
       </div>
     </div>
