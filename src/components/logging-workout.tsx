@@ -134,6 +134,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   return (
     <div className={``}>
       <div className="space-y-4">
+        ayy
         {activeWorkout?.exercises?.map((exercise) => (
           <div key={exercise.id} className="bg-accent rounded-lg p-4">
             <div className="flex gap-2 items-center">

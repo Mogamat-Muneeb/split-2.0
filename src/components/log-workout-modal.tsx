@@ -19,21 +19,19 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
   workout,
   isEmptyWorkout = false,
 }) => {
-  const { startWorkout, activeWorkout, resetWorkout, openStartWorkoutModal } =
-    useLogWorkout();
+  const {
+    startWorkout,
+    activeWorkout,
+    resetWorkout,
+    openStartWorkoutModal,
+    endWorkout,
+  } = useLogWorkout();
 
   const [hasStarted, setHasStarted] = useState(false);
 
   const handleStart = () => {
     if (isEmptyWorkout) {
-      const emptyWorkout: Workout = {
-        id: null,
-        name: "Empty Workout",
-        workout_exercises: [],
-        created_at: new Date().toISOString(),
-        user_id: "",
-      };
-      startWorkout(emptyWorkout);
+      startWorkout();
     } else {
       startWorkout(workout);
     }
@@ -50,21 +48,79 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
   const handleStartNew = () => {
     resetWorkout();
     if (isEmptyWorkout) {
-      const emptyWorkout: Workout = {
-        id: `temp-${Date.now()}`,
-        name: "Empty Workout",
-        workout_exercises: [],
-        created_at: new Date().toISOString(),
-        user_id: "",
-      };
-      startWorkout(emptyWorkout);
+      startWorkout();
     } else {
       startWorkout(workout);
     }
     onClose();
   };
 
+  const handleFinish = () => {
+    endWorkout();
+    onClose();
+  };
+
   if (!open) return null;
+
+  const targetWorkout = isEmptyWorkout
+    ? { id: "empty", name: "Empty Workout" }
+    : workout;
+  const isActiveWorkout =
+    activeWorkout &&
+    ((isEmptyWorkout && activeWorkout.workoutId === null) ||
+      (!isEmptyWorkout && workout && activeWorkout.workoutId === workout.id));
+
+  if (activeWorkout && isActiveWorkout) {
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-black/20 z-40"
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
+        >
+          <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4 max-w-4xl w-full">
+            <div className="max-h-[70vh] overflow-y-auto">
+              <div className="flex justify-between items-center w-full mb-4 sticky top-0 bg-white dark:bg-[#2d2d2d] pb-4">
+                <div className="flex items-center gap-2">
+                  <ChevronDown size={16} />
+                  <h2 className="text-sm">Log Workout</h2>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <WatchIcon />
+                  </div>
+                  <div>
+                    <Button onClick={handleFinish}>Finish</Button>
+                  </div>
+                </div>
+              </div>
+              <LoggingWorkout activeWorkout={activeWorkout} />
+              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    resetWorkout();
+                    onClose();
+                  }}
+                >
+                  Discard Active Workout
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -77,35 +133,110 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
       />
 
       <AnimatePresence mode="wait">
-        {activeWorkout || hasStarted ? (
-          activeWorkout?.id === workout?.id ||
-          activeWorkout?.workoutId === workout?.id ||
-          hasStarted ? (
-            <motion.div
-              key="active-workout"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
-            >
-              <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
-                <div className="max-h-[50vh] overflow-y-auto">
-                  <div className="flex justify-between items-center w-full mb-4">
-                    <div className="flex items-center gap-2">
-                      <ChevronDown size={16} />
-                      <h2 className="text-sm">Log Workout</h2>
+        {/* Case 1: No active workout - start the workout */}
+        {!activeWorkout && (
+          <motion.div
+            key="start-workout"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white dark:bg-[#1a1a1a] rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl"
+          >
+            <h2 className="text-xl font-bold mb-2">Start Workout</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Ready to start "{targetWorkout?.name}"?
+            </p>
+            <div className="flex gap-3">
+              <Button onClick={onClose} variant="outline" className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleStart} className="flex-1">
+                Start Now
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Case 2: Active workout exists and it's NOT the same as the clicked workout */}
+        {activeWorkout && !isActiveWorkout && (
+          <motion.div
+            key="different-workout"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl"
+          >
+            <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
+              <div className="max-h-[50vh] overflow-y-auto">
+                <div className="space-y-4 text-center">
+                  <p className="font-bold tracking-tight">
+                    You have a workout in progress
+                  </p>
+                  <p className="">
+                    If you start a new workout, your old <br />
+                    workout will be permanently deleted.
+                  </p>
+
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={handleResume}
+                      className="bg-orange-600 text-foreground"
+                    >
+                      Resume workout in progress
+                    </Button>
+                    <Button onClick={handleStartNew}>Start New Workout</Button>
+                    <Button
+                      variant="outline"
+                      className="border-0"
+                      onClick={onClose}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        resetWorkout();
+                        onClose();
+                      }}
+                    >
+                      Discard Active Workout
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Case 3: Active workout exists and it IS the same as the clicked workout */}
+        {activeWorkout && isActiveWorkout && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
+          >
+            <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4 max-w-4xl w-full">
+              <div className="max-h-[70vh] overflow-y-auto">
+                <div className="flex justify-between items-center w-full mb-4 sticky top-0 bg-white dark:bg-[#2d2d2d] pb-4">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown size={16} />
+                    <h2 className="text-sm">Log Workout</h2>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <WatchIcon />
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <WatchIcon />
-                      </div>
-                      <div>
-                        <Button>Finish</Button>
-                      </div>
+                    <div>
+                      <Button onClick={handleFinish}>Finish</Button>
                     </div>
                   </div>
-                  <LoggingWorkout activeWorkout={activeWorkout} />
+                </div>
+                <LoggingWorkout activeWorkout={activeWorkout} />
+                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -117,127 +248,9 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                   </Button>
                 </div>
               </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="workout-in-progress"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl"
-            >
-              <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
-                <div className="max-h-[50vh] overflow-y-auto">
-                  <div className="space-y-4 text-center">
-                    <p className="font-bold tracking-tight">
-                      You have a workout in progress
-                    </p>
-                    <p className="">
-                      If you start a new workout, your old <br />
-                      workout will be permanently deleted.
-                    </p>
-
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        onClick={handleResume}
-                        className="bg-orange-600 text-foreground"
-                      >
-                        Resume workout in progress
-                      </Button>
-                      <Button onClick={handleStartNew}>
-                        Start New Workout
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="border-0"
-                        onClick={onClose}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => {
-                          resetWorkout();
-                          onClose();
-                        }}
-                      >
-                        Discard Active Workout
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )
-        ) : isEmptyWorkout ? (
-          <motion.div
-            key="empty-workout"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
-          >
-            <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
-              <div className="space-y-4 text-center">
-                <h3 className="tracking-tight font-bold">
-                  Start Empty Workout
-                </h3>
-                <p className="text-sm">
-                  This will start an empty workout. You can add <br /> exercises
-                  as you go.
-                </p>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={handleStart}
-                    className="bg-orange-600 text-white"
-                  >
-                    Start Empty Workout
-                  </Button>
-                  <Button variant="outline" onClick={onClose}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
             </div>
           </motion.div>
-        ) : workout && workout.workout_exercises?.length ? (
-          <motion.div
-            key="workout-exercises"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
-          >
-            <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
-              <div className="max-h-[50vh] overflow-y-auto">
-                <div className="space-y-4">
-                  {workout.workout_exercises.map((ex) => (
-                    <div
-                      key={ex.id + Math.random}
-                      className="flex justify-between items-center p-2 bg-accent rounded-xl"
-                    >
-                      <p className="tracking-tight font-medium text-14">
-                        {ex.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {ex.sets?.length || 0} sets
-                      </p>
-                    </div>
-                  ))}
-                  <Button
-                    onClick={handleStart}
-                    className="bg-orange-600 text-white"
-                  >
-                    Start Workout
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
     </>
   );

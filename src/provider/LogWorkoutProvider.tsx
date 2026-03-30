@@ -44,7 +44,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   );
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  console.log("activeWorkout 🍆" , activeWorkout)
+  console.log("activeWorkout 🍆", activeWorkout);
 
   useEffect(() => {
     const fetchActiveWorkout = async () => {
@@ -104,7 +104,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       setActiveWorkout({
         id: data.id,
         name: data.name,
-        workoutId: data.workout_id,
+        workoutId: data.workout_id ?? null,
         startedAt: new Date(data.started_at),
         exercises,
       });
@@ -303,6 +303,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   }, [activeWorkout?.id, activeWorkout?.exercises]);
 
   const [startWorkoutModalOpen, setStartWorkoutModalOpen] = useState(false);
+
   const [selectedWorkout, setSelectedWorkout] = useState<
     Workout | ActiveWorkout | null
   >(null);
@@ -334,6 +335,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       ])
       .select()
       .single();
+    console.log("🚀 ~ startWorkout ~ session:", session);
 
     if (error || !session) {
       console.error("Error starting workout:", error);
@@ -409,7 +411,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     setActiveWorkout({
       id: session.id,
       name: session.name,
-      workoutId: workout?.id || `temp-${Date.now()}`,
+      workoutId: workout?.id ?? null,
       startedAt: new Date(session.started_at),
       exercises: formattedExercises,
     });
@@ -729,6 +731,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const closeStartWorkoutModal = () => {
+    console.log("CLicking");
     setSelectedWorkout(null);
     setStartWorkoutModalOpen(false);
   };
