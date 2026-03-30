@@ -1,37 +1,20 @@
 import { useAuth } from "@/auth/useAuth";
 import supabase from "@/lib/supabase";
 import type { UserProfile } from "@/lib/types";
-import { ClipboardList, Dumbbell, House, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { navItems } from "@/lib/utils";
+import ToggleSwitch from "./toggle-switch";
+import { useTheme } from "next-themes";
 
 const FloatingNav = () => {
   const location = useLocation();
   const pathname = location.pathname;
   const { user: authUser } = useAuth();
   const [currentUser, setCurrentUser] = useState<UserProfile>();
+  const { theme, setTheme } = useTheme();
 
-  const navItems = [
-    {
-      id: "home",
-      path: "/dashboard",
-      icon: House,
-      label: "Home",
-    },
-    {
-      id: "workouts",
-      path: "/dashboard/splits",
-      icon: ClipboardList,
-      label: "Workouts",
-    },
-    {
-      id: "exercises",
-      path: "/dashboard/exercises",
-      icon: Dumbbell,
-      label: "Exercises",
-    },
-  ];
   const isActive = (itemPath: string) => {
     if (itemPath === "/dashboard") {
       return pathname === "/dashboard";
@@ -81,6 +64,10 @@ const FloatingNav = () => {
     };
   }, [authUser?.id]);
 
+  const handleToggleChange = (checked: boolean) => {
+    setTheme(checked ? "dark" : "light");
+  };
+
   return (
     <div className="w-fit fixed bottom-4 left-0 right-0 mx-auto block lg:hidden">
       <div className="flex gap-10 items-center transition-all duration-200  p-2 min-w-[150px] w-full  rounded-3xl blur-in bg-[#FAF6FA] dark:bg-[#2d2d2d]">
@@ -93,24 +80,27 @@ const FloatingNav = () => {
                 key={item.id}
                 to={item.path}
                 className={`
-                rounded-full p-2 hover:bg-gray-100 transition-all duration-200
-                `}
+                  rounded-full h-10 w-10 items-center flex justify-center transition-all duration-200
+                  text-sm
+
+                 ${active ? "bg-orange-600 text-black font-bold " : "bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
                 aria-label={item.label}
               >
                 <Icon
-                  className={`stroke-[1.75px] ${active ? "stroke-yellow-300" : "stroke-white"} `}
+                  className={`stroke-[1.75px] ${active ? "dark:stroke-white stroke-black" : "dark:stroke-white stroke-black"} `}
                   size={20}
-                  // stroke={active ? "bg-orange-600" : "#7a7a78"}
                 />
               </Link>
             );
           })}
         </div>
 
-        <div className=" flex gap-3">
-          {/* <div className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent  bg-[#9eed00] hover:scale-95 transition-all flex justify-center items-center">
-            <Plus size={16} />
-          </div> */}
+        <div className=" flex gap-3 items-center">
+          <ToggleSwitch
+            onChange={handleToggleChange}
+            defaultChecked={theme === "dark"}
+            isThemeToggle={true}
+          />
           {!currentUser?.avatar_url ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}

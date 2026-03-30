@@ -112,9 +112,7 @@ const ManageWorkouts = () => {
         if (error) throw error;
         setWorkouts(workoutsData || []);
 
-        console.log("workoutsData" , workoutsData)
-
-
+        console.log("workoutsData", workoutsData);
 
         // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase
@@ -128,7 +126,6 @@ const ManageWorkouts = () => {
               filter: `user_id=eq.${user.id}`,
             },
             (payload) => {
-
               setWorkouts((prev) => {
                 switch (payload.eventType) {
                   case "INSERT":
@@ -326,7 +323,6 @@ const ManageWorkouts = () => {
             {!isLoading &&
               !error &&
               workouts.map((workout) => {
-
                 const isHovered = hoveredWorkout === workout.id;
 
                 return (
@@ -350,11 +346,14 @@ const ManageWorkouts = () => {
                           {workout?.workout_exercises?.length} Exercises •
                         </p>
                         <p className="truncate">
-                          {workout?.workout_exercises
-                            .slice(0, 2)
-                            ?.map((exercise) => exercise.name)
-                            .join(", ")}
-                          {workout?.workout_exercises?.length > 2 && " ..."}
+                          {workout?.workout_exercises &&
+                            workout?.workout_exercises
+                              .slice(0, 2)
+                              ?.map((exercise) => exercise.name)
+                              .join(", ")}
+                          {workout?.workout_exercises &&
+                            workout?.workout_exercises?.length > 2 &&
+                            " ..."}
                         </p>
                       </div>
                     </div>
