@@ -1,5 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
-import { ClipboardList, History, Plus } from "lucide-react";
+import { ClipboardList, Plus, Ruler } from "lucide-react";
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -7,12 +7,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const navItems = [
-  {
-    id: "stats",
-    path: "/dashboard/stats",
-    icon: History,
-    label: "Stats",
-  },
   {
     id: "home",
     path: "/dashboard",
@@ -24,5 +18,11 @@ export const navItems = [
     path: "/dashboard/splits",
     icon: ClipboardList,
     label: "Workouts",
+  },
+  {
+    id: "stats",
+    path: "/dashboard/stats",
+    icon: Ruler,
+    label: "Stats",
   },
 ];

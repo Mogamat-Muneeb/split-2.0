@@ -112,6 +112,7 @@ export interface ActiveWorkout {
   workoutId?: string;
   name: string;
   startedAt: Date;
+  created_at: Date;
   exercises: WorkoutExercise[];
 }
 

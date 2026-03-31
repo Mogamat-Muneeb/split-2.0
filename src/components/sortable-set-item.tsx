@@ -1,10 +1,11 @@
 import React from "react";
-import type { Set } from "./create-workout-modal";
+
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import type { Set } from "@/lib/types";
 
 const SortableSetItem: React.FC<{
   set: Set;

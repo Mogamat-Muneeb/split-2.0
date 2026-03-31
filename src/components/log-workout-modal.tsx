@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useLogWorkout } from "@/provider/LogWorkoutProvider";
@@ -23,15 +23,11 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     startWorkout,
     activeWorkout,
     resetWorkout,
-    openStartWorkoutModal,
     endWorkout,
     resumeWorkout,
-    selectedWorkout,
     setForceOpenWorkoutModal,
     forceOpenWorkoutModal,
   } = useLogWorkout();
-
-  const [hasStarted, setHasStarted] = useState(false);
 
   const handleStart = () => {
     if (isEmptyWorkout) {
@@ -39,17 +35,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     } else {
       startWorkout(workout);
     }
-    setHasStarted(true);
   };
-
-  const newLocal = () => {
-    console.log("We are running this ");
-    onClose();
-    if (activeWorkout) {
-      openStartWorkoutModal(activeWorkout);
-    }
-  };
-  // const handleResume = newLocal;
 
   const handleStartNew = () => {
     resetWorkout();
@@ -76,7 +62,6 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     ((isEmptyWorkout && activeWorkout.workoutId === null) ||
       (!isEmptyWorkout && workout && activeWorkout.workoutId === workout.id));
 
-  console.log("CHecking", activeWorkout && isActiveWorkout);
   const shouldShowLoggingModal =
     (activeWorkout && isActiveWorkout) || forceOpenWorkoutModal;
 
@@ -159,12 +144,16 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
             transition={{ duration: 0.2 }}
             className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white dark:bg-[#1a1a1a] rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl"
           >
-            <h2 className="text-xl font-bold mb-2">Start Workout</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <h2 className="tracking-tight font-bold mb-2">Start Workout</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
               Ready to start "{targetWorkout?.name}"?
             </p>
             <div className="flex gap-3">
-              <Button onClick={onClose} variant="outline" className="flex-1">
+              <Button
+                onClick={onClose}
+                variant="outline"
+                className="flex-1 !border-transparent"
+              >
                 Cancel
               </Button>
               <Button onClick={handleStart} className="flex-1">
@@ -190,7 +179,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                   <p className="font-bold tracking-tight">
                     You have a workout in progress
                   </p>
-                  <p className="">
+                  <p className="text-sm">
                     If you start a new workout, your old <br />
                     workout will be permanently deleted.
                   </p>

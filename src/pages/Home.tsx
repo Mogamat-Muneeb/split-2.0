@@ -13,8 +13,7 @@ const Home = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [hoveredWorkout, setHoveredWorkout] = useState<string | null>(null);
-  const { openStartWorkoutModal, startWorkout, activeWorkout } =
-    useLogWorkout();
+  const { openStartWorkoutModal, activeWorkout } = useLogWorkout();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -119,7 +118,6 @@ const Home = () => {
     };
   }, []);
 
-  // Loading skeleton component
   const LoadingSkeleton = () => (
     <div className="space-y-3">
       {[1, 2, 3].map((i) => (
@@ -137,10 +135,6 @@ const Home = () => {
       ))}
     </div>
   );
-
-  const handleStart = (workout?: Workout) => {
-    startWorkout(workout);
-  };
 
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
@@ -275,7 +269,7 @@ const Home = () => {
                           <motion.div
                             onClick={async () => {
                               if (!activeWorkout) {
-                                await handleStart(workout);
+                                // await handleStart(workout);
                                 openStartWorkoutModal(workout);
                               } else {
                                 openStartWorkoutModal(workout);
@@ -298,7 +292,7 @@ const Home = () => {
                               <motion.div
                                 onClick={async () => {
                                   if (!activeWorkout) {
-                                    await handleStart(workout);
+                                    // await handleStart(workout);
                                     openStartWorkoutModal(workout);
                                   } else {
                                     openStartWorkoutModal(workout);

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
-import type { Exercise, Set, WorkoutExercise } from "./create-workout-modal";
 import {
   DndContext,
   closestCenter,
@@ -13,7 +12,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, EllipsisVertical, GripVertical } from "lucide-react";
+import { EllipsisVertical, GripVertical } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -33,8 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "./ui/input";
-import SortableSetItem from "./Sortable-Set-Item";
 import { Button } from "./ui/button";
+import type { Exercise, WorkoutExercise } from "@/lib/types";
+import SortableSetItem from "./sortable-set-item";
 
 const SortableExerciseItem: React.FC<{
   exercise: Exercise;
@@ -44,6 +44,8 @@ const SortableExerciseItem: React.FC<{
     folder: string,
     updates: Partial<WorkoutExercise>,
   ) => void;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  //@ts-ignore
   updateSet: (folder: string, setIndex: number, updates: Partial<Set>) => void;
   addSet: (folder: string) => void;
   removeSet: (folder: string, setIndex: number) => void;
