@@ -77,7 +77,7 @@ const Dashboard = () => {
                     : activeWorkout.name}
                 </span>
               </h4>
-              <h2 className="text-xs">{formatTime(elapsedTime)}</h2>
+              <h2 className="text-xs w-[80px]">{formatTime(elapsedTime)}</h2>
             </div>
 
             <div className="w-full flex justify-end">

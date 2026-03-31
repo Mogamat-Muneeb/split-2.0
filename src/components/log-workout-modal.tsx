@@ -112,20 +112,22 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                     <WatchIcon />
                   </div>
                   <div>
-                    <Button onClick={handleFinish} className="text-xs">Finish</Button>
+                    <Button onClick={handleFinish} className="text-xs">
+                      Finish
+                    </Button>
                   </div>
                 </div>
               </div>
               <LoggingWorkout activeWorkout={activeWorkout} />
-              <div>
+              <div className="w-full flex justify-end">
                 <Button
-                  className="bg-red-700 text-white text-xs"
+                  className="bg-red-700 text-white "
                   onClick={() => {
                     resetWorkout();
                     onClose();
                   }}
                 >
-                  Discard Active Workout
+                  Discard Workout
                 </Button>
               </div>
             </div>
@@ -187,7 +189,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm"
           >
             <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4">
               <div className="max-h-[50vh] overflow-y-auto">
@@ -208,22 +210,24 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                       Resume workout in progress
                     </Button>
                     <Button onClick={handleStartNew}>Start New Workout</Button>
-                    <Button
-                      variant="outline"
-                      className="border-0"
-                      onClick={onClose}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="bg-red-700 text-white text-xs"
-                      onClick={() => {
-                        resetWorkout();
-                        onClose();
-                      }}
-                    >
-                      Discard Active Workout
-                    </Button>
+                    <div className="grid grid-cols-2 items-center gap-1 w-full">
+                      <Button
+                        variant="outline"
+                        className="border-0 w-full"
+                        onClick={onClose}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="bg-red-700 text-white  w-full"
+                        onClick={() => {
+                          resetWorkout();
+                          onClose();
+                        }}
+                      >
+                        Discard Workout
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -255,20 +259,22 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                       <WatchIcon />
                     </div>
                     <div>
-                      <Button onClick={handleFinish} className="text-xs">Finish</Button>
+                      <Button onClick={handleFinish} className="text-xs">
+                        Finish
+                      </Button>
                     </div>
                   </div>
                 </div>
                 <LoggingWorkout activeWorkout={activeWorkout} />
-                <div className="">
+                <div className="w-full flex justify-end">
                   <Button
-                    className="bg-red-700 text-white text-xs"
+                    className="bg-red-700 text-white "
                     onClick={() => {
                       resetWorkout();
                       onClose();
                     }}
                   >
-                    Discard Active Workout
+                    Discard Workout
                   </Button>
                 </div>
               </div>

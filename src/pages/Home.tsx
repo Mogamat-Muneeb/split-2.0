@@ -210,7 +210,11 @@ const Home = () => {
         <div className="mt-4 flex items-center w-full">
           <div className="w-full">
             {/* Loading State */}
-            {isLoading && <LoadingSkeleton />}
+            {isLoading && (
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Loading workouts..
+              </p>
+            )}
 
             {/* Error State */}
             {error && !isLoading && (
@@ -254,9 +258,16 @@ const Home = () => {
                       transition={{ type: "spring", stiffness: 300 }}
                     >
                       <div className="w-full flex flex-col">
-                        <h3 className="font-bold tracking-tight truncate">
+                        <h3 className="lg:flex hidden font-bold tracking-tight truncate">
                           {workout.name}
                         </h3>
+
+                        <h3 className="flex lg:hidden font-bold tracking-tight truncate">
+                          {workout.name.length > 15
+                            ? `${workout.name.slice(0, 15)}...`
+                            : workout.name}
+                        </h3>
+
                         <div className="mt-3 flex items-center text-sm">
                           <p className="mr-1 whitespace-nowrap">
                             {workout.workout_exercises?.length} Exercises •
@@ -264,11 +275,12 @@ const Home = () => {
                           <p className="truncate">
                             {workout?.workout_exercises &&
                               workout?.workout_exercises
-                                .slice(0, 2)
+                                .slice(0, 1)
                                 ?.map((exercise) => exercise.name)
                                 .join(", ")}
+
                             {workout?.workout_exercises &&
-                              workout?.workout_exercises?.length > 2 &&
+                              workout?.workout_exercises?.length > 1 &&
                               " ..."}
                           </p>
                         </div>

@@ -240,7 +240,10 @@ const ManageWorkouts = () => {
         <h2 className="text-orange-600 font-black text-2xl tracking-tight">
           Manage workouts
         </h2>
-        <Button onClick={openModal} className="hover:bg-orange-700 bg-orange-600 text-foreground">
+        <Button
+          onClick={openModal}
+          className="hover:bg-orange-700 bg-orange-600 text-foreground"
+        >
           New Workout
         </Button>
       </div>
@@ -286,7 +289,11 @@ const ManageWorkouts = () => {
 
       <div className="mt-4 flex items-center w-full">
         <div className="w-full">
-          {isLoading && <LoadingSkeleton />}
+          {isLoading && (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Loading workouts..
+            </p>
+          )}
 
           {error && !isLoading && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-3xl">
@@ -328,9 +335,16 @@ const ManageWorkouts = () => {
                     onClick={() => openEditModal(workout)}
                   >
                     <div className="w-full flex flex-col">
-                      <h3 className="font-bold tracking-tight truncate">
+                      <h3 className="lg:flex hidden font-bold tracking-tight truncate">
                         {workout.name}
                       </h3>
+
+                      <h3 className="flex lg:hidden font-bold tracking-tight truncate">
+                        {workout.name.length > 15
+                          ? `${workout.name.slice(0, 15)}...`
+                          : workout.name}
+                      </h3>
+
                       <div className="mt-3 flex items-center text-sm">
                         <p className="mr-1 whitespace-nowrap">
                           {workout?.workout_exercises?.length} Exercises •
