@@ -25,6 +25,10 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     resetWorkout,
     openStartWorkoutModal,
     endWorkout,
+    resumeWorkout,
+    selectedWorkout,
+    setForceOpenWorkoutModal,
+    forceOpenWorkoutModal,
   } = useLogWorkout();
 
   const [hasStarted, setHasStarted] = useState(false);
@@ -38,12 +42,14 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     setHasStarted(true);
   };
 
-  const handleResume = () => {
+  const newLocal = () => {
+    console.log("We are running this ");
     onClose();
     if (activeWorkout) {
       openStartWorkoutModal(activeWorkout);
     }
   };
+  // const handleResume = newLocal;
 
   const handleStartNew = () => {
     resetWorkout();
@@ -70,14 +76,21 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     ((isEmptyWorkout && activeWorkout.workoutId === null) ||
       (!isEmptyWorkout && workout && activeWorkout.workoutId === workout.id));
 
-  if (activeWorkout && isActiveWorkout) {
+  console.log("CHecking", activeWorkout && isActiveWorkout);
+  const shouldShowLoggingModal =
+    (activeWorkout && isActiveWorkout) || forceOpenWorkoutModal;
+
+  if (shouldShowLoggingModal) {
     return (
       <>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={() => {
+            onClose();
+            setForceOpenWorkoutModal(false);
+          }}
           className="fixed inset-0 bg-black/20 z-40"
         />
         <motion.div
@@ -89,7 +102,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
         >
           <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4 max-w-4xl w-full">
             <div className="max-h-[70vh] overflow-y-auto">
-              <div className="flex justify-between items-center w-full mb-4 sticky top-0 bg-white dark:bg-[#2d2d2d] pb-4">
+              <div className="flex justify-between items-center w-full  sticky top-0 z-40 bg-white dark:bg-[#2d2d2d]">
                 <div className="flex items-center gap-2">
                   <ChevronDown size={16} />
                   <h2 className="text-sm">Log Workout</h2>
@@ -104,7 +117,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                 </div>
               </div>
               <LoggingWorkout activeWorkout={activeWorkout} />
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="">
                 <Button
                   variant="destructive"
                   onClick={() => {
@@ -128,7 +141,10 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
+        onClick={() => {
+          onClose();
+          setForceOpenWorkoutModal(false);
+        }}
         className="fixed inset-0 bg-black/20 z-40"
       />
 
@@ -181,7 +197,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
 
                   <div className="flex flex-col gap-2">
                     <Button
-                      onClick={handleResume}
+                      onClick={resumeWorkout}
                       className="bg-orange-600 text-foreground"
                     >
                       Resume workout in progress
@@ -211,7 +227,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
         )}
 
         {/* Case 3: Active workout exists and it IS the same as the clicked workout */}
-        {activeWorkout && isActiveWorkout && (
+        {shouldShowLoggingModal && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -221,7 +237,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
           >
             <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4 max-w-4xl w-full">
               <div className="max-h-[70vh] overflow-y-auto">
-                <div className="flex justify-between items-center w-full mb-4 sticky top-0 bg-white dark:bg-[#2d2d2d] pb-4">
+                <div className="flex justify-between items-center w-full  z-40  sticky top-0 bg-white dark:bg-[#2d2d2d]">
                   <div className="flex items-center gap-2">
                     <ChevronDown size={16} />
                     <h2 className="text-sm">Log Workout</h2>
@@ -236,7 +252,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                   </div>
                 </div>
                 <LoggingWorkout activeWorkout={activeWorkout} />
-                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="">
                   <Button
                     variant="destructive"
                     onClick={() => {

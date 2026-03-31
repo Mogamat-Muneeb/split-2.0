@@ -114,3 +114,28 @@ export interface ActiveWorkout {
   startedAt: Date;
   exercises: WorkoutExercise[];
 }
+
+export interface ExerciseJsonContent {
+  [key: string]: any;
+}
+
+export interface Exercise {
+  folder: string;
+  images: string[];
+  jsonContents: ExerciseJsonContent[];
+}
+
+export interface Set {
+  weight: number;
+  repType: "reps" | "repRange";
+  reps?: number;
+  repRangeMin?: number;
+  repRangeMax?: number;
+}
+
+export interface WorkoutExercise {
+  exercise: Exercise;
+  notes: string;
+  restTimer: string;
+  sets: Set[];
+}
