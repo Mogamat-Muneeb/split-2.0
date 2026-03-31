@@ -1,0 +1,738 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
+import type { Workout, WorkoutExercise, Set, ActiveWorkout } from "@/lib/types";
+import supabase from "@/lib/supabase";
+
+interface LogWorkoutContextType {
+  activeWorkout: ActiveWorkout | null;
+  startWorkout: (workout?: Workout) => void;
+  endWorkout: () => void;
+  addExercise: (exercise: WorkoutExercise) => void;
+  updateSet: (exerciseId: string, setId: string, data: Partial<Set>) => void;
+  elapsedTime: number;
+  resetWorkout: () => void;
+  startWorkoutModalOpen: boolean;
+  openStartWorkoutModal: (workout?: Workout | ActiveWorkout) => void;
+  closeStartWorkoutModal: () => void;
+  removeSet: (exerciseId: string, setId: string) => Promise<void>;
+  addSet: (exerciseId: string, newSet: any) => Promise<void>;
+  resumeWorkout: () => void;
+  forceOpenWorkoutModal: boolean;
+  selectedWorkout: Workout | ActiveWorkout | null;
+  setForceOpenWorkoutModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setMiniMize: React.Dispatch<React.SetStateAction<boolean>>;
+  miniMize: boolean;
+  handleMinimize: () => void;
+  setStartWorkoutModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const LogWorkoutContext = createContext<LogWorkoutContextType | undefined>(
+  undefined,
+);
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useLogWorkout = () => {
+  const context = useContext(LogWorkoutContext);
+  if (!context) {
+    throw new Error("useLogWorkout must be used within a LogWorkoutProvider");
+  }
+  return context;
+};
+
+export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
+  const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(
+    null,
+  );
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [forceOpenWorkoutModal, setForceOpenWorkoutModal] = useState(false);
+
+  const [miniMize, setMiniMize] = useState<boolean>(() =>
+    JSON.parse(localStorage.getItem("miniMize") || "false"),
+  );
+  console.log("🚀 ~ LogWorkoutProvider ~ miniMize:", miniMize);
+
+  // const handleMinimize = () => {
+  //   setMiniMize(!miniMize);
+  // };
+
+  // Reset miniMize when activeWorkout becomes null (no active workout)
+  useEffect(() => {
+    if (activeWorkout) {
+      setMiniMize(true);
+      localStorage.setItem("miniMize", JSON.stringify(true));
+    }
+  }, [activeWorkout]);
+
+  const handleMinimize = () => {
+    setMiniMize((prev) => {
+      const next = !prev;
+      localStorage.setItem("miniMize", JSON.stringify(next));
+
+      // If we're expanding (next === false), we need to open the modal
+      if (!next && activeWorkout) {
+        // Open the modal by setting forceOpenWorkoutModal to true
+        setForceOpenWorkoutModal(true);
+        // Also open the start workout modal if needed
+        setStartWorkoutModalOpen(true);
+      }
+
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const fetchActiveWorkout = async () => {
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select(
+          `
+          id,
+          name,
+          started_at,
+          workout_id,
+          workout_session_exercises (
+            id,
+            name,
+            notes,
+            rest_timer,
+            order_index,
+            exercise_image,
+            workout_sets (
+              id,
+              set_number,
+              reps,
+              rep_range_min,
+              rep_range_max,
+              weight,
+              checked
+            )
+          )
+        `,
+        )
+        .eq("status", "in_progress")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) return;
+
+      const exercises =
+        data.workout_session_exercises?.map((ex: any) => ({
+          id: ex.id,
+          name: ex.name,
+          notes: ex.notes,
+          rest_timer: ex.rest_timer,
+          exercise_image: ex.exercise_image || null,
+          sets:
+            ex.workout_sets?.map((set: any) => ({
+              id: set.id,
+              set_number: set.set_number,
+              reps: set.reps,
+              rep_range_min: set.rep_range_min,
+              rep_range_max: set.rep_range_max,
+              weight: set.weight,
+              checked: set.checked,
+            })) || [],
+        })) || [];
+
+      setActiveWorkout({
+        id: data.id,
+        name: data.name,
+        workoutId: data.workout_id ?? null,
+        startedAt: new Date(data.started_at),
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-ignore
+        exercises,
+      });
+    };
+
+    fetchActiveWorkout();
+  }, []);
+
+  useEffect(() => {
+    if (!activeWorkout?.id) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`workout-${activeWorkout.id}`)
+
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workout_sessions",
+          filter: `id=eq.${activeWorkout.id}`,
+        },
+        (payload) => {
+          setActiveWorkout((prev) => {
+            if (!prev) {
+              return prev;
+            }
+            const updated = { ...prev, ...payload.new };
+            return updated;
+          });
+        },
+      )
+
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workout_session_exercises",
+          filter: `workout_session_id=eq.${activeWorkout.id}`,
+        },
+        (payload) => {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          //@ts-expect-error
+          setActiveWorkout((prev) => {
+            if (!prev) return prev;
+
+            const updatedExerciseFromDB = payload.new || payload.old;
+
+            const existingExercise = prev.exercises.find(
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-expect-error
+              (ex) => ex.id === updatedExerciseFromDB.id,
+            );
+
+            const mergedExercise = {
+              ...updatedExerciseFromDB,
+              sets: existingExercise?.sets || [],
+            };
+
+            const exerciseExists = prev.exercises.some(
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-expect-error
+              (ex) => ex.id === mergedExercise.id,
+            );
+
+            if (!exerciseExists) {
+              return prev;
+            }
+
+            const exercises = prev.exercises.map((ex) =>
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-ignore
+              ex.id === mergedExercise.id ? mergedExercise : ex,
+            );
+
+            return { ...prev, exercises };
+          });
+        },
+      )
+
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workout_sets",
+          filter: `exercise_id=in.(${activeWorkout.exercises
+            .map((ex) => ex.id)
+            .join(",")})`,
+        },
+        (payload) => {
+          // Handle different events
+          if (payload.eventType === "DELETE") {
+            // Remove the set from local state
+            const deletedSet = payload.old;
+            setActiveWorkout((prev) => {
+              if (!prev) return prev;
+
+              return {
+                ...prev,
+                exercises: prev.exercises.map((ex) => {
+                  if (ex.id === deletedSet.exercise_id) {
+                    return {
+                      ...ex,
+                      sets: ex.sets.filter((set) => set.id !== deletedSet.id),
+                    };
+                  }
+                  return ex;
+                }),
+              };
+            });
+          } else {
+            // Handle INSERT and UPDATE
+            const setUpdate = payload.new;
+            setActiveWorkout((prev) => {
+              if (!prev) return prev;
+
+              return {
+                ...prev,
+                exercises: prev.exercises.map((ex) => {
+                  if (ex.id === setUpdate?.exercise_id) {
+                    const setExists = ex.sets?.some(
+                      (s: any) => s.id === setUpdate.id,
+                    );
+
+                    if (setExists) {
+                      // Update existing set
+                      return {
+                        ...ex,
+                        sets: ex.sets?.map((s: any) =>
+                          s.id === setUpdate.id ? setUpdate : s,
+                        ),
+                      };
+                    } else {
+                      // Add new set
+                      return {
+                        ...ex,
+                        sets: [...(ex.sets || []), setUpdate],
+                      };
+                    }
+                  }
+                  return ex;
+                }),
+              };
+            });
+          }
+        },
+      )
+
+      .subscribe((status, err) => {
+        if (status === "SUBSCRIBED") {
+          /* empty */
+        } else if (status === "CHANNEL_ERROR") {
+          console.error(
+            `[Workout Realtime] Subscription error for workout ${activeWorkout.id}:`,
+            err,
+          );
+        } else if (status === "TIMED_OUT") {
+          console.warn(
+            `[Workout Realtime] Subscription timed out for workout ${activeWorkout.id}`,
+          );
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeWorkout?.id]);
+
+  const [startWorkoutModalOpen, setStartWorkoutModalOpen] = useState(false);
+
+  const [selectedWorkout, setSelectedWorkout] = useState<
+    Workout | ActiveWorkout | null
+  >(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timer;
+  
+    if (activeWorkout?.startedAt) {
+      interval = setInterval(() => {
+        const now = new Date().getTime();
+        const started = new Date(activeWorkout.startedAt).getTime();
+  
+        const seconds = Math.floor((now - started) / 1000);
+        setElapsedTime(seconds);
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+  
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeWorkout?.startedAt]);
+  const startWorkout = async (workout?: Workout) => {
+    const { data: session, error } = await supabase
+      .from("workout_sessions")
+      .insert([
+        {
+          name: workout?.name || "New Workout",
+          status: "in_progress",
+          workout_id: workout?.id || null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error || !session) {
+      console.error("Error starting workout:", error);
+      return;
+    }
+
+    if (workout?.workout_exercises?.length) {
+      for (const ex of workout.workout_exercises) {
+        const { data: newExercise, error: exError } = await supabase
+          .from("workout_session_exercises")
+          .insert([
+            {
+              workout_session_id: session.id,
+              name: ex.name,
+              notes: ex.notes,
+              rest_timer:
+                typeof ex.rest_timer === "number" ? ex.rest_timer : null,
+              order_index:
+                typeof ex.order_index === "number" ? ex.order_index : 0,
+              exercise_image: ex.exercise_image || null,
+            },
+          ])
+          .select()
+          .single();
+
+        if (exError || !newExercise) {
+          console.error("Error inserting exercise:", exError);
+          continue;
+        }
+
+        if (ex.sets?.length) {
+          const setsToInsert = ex.sets.map((set) => ({
+            exercise_id: newExercise.id,
+            set_number: set.set_number,
+            reps: set.reps,
+            rep_range_min: set.rep_range_min,
+            rep_range_max: set.rep_range_max,
+            weight: set.weight,
+            checked: false,
+          }));
+
+          const { error: setError } = await supabase
+            .from("workout_sets")
+            .insert(setsToInsert);
+
+          if (setError) {
+            console.error("Error inserting sets:", setError);
+          }
+        }
+      }
+    }
+
+    const formattedExercises =
+      workout?.workout_exercises?.map((ex, index) => ({
+        id: `temp-${index}`,
+        name: ex.name,
+        notes: ex.notes,
+        rest_timer: ex.rest_timer,
+        exercise_image: ex.exercise_image || null,
+        order_index: ex.order_index || 0,
+        sets:
+          ex.sets?.map((set, setIndex) => ({
+            id: `temp-set-${index}-${setIndex}`,
+            set_number: set.set_number,
+            reps: set.reps,
+            rep_range_min: set.rep_range_min,
+            rep_range_max: set.rep_range_max,
+            weight: set.weight,
+            checked: false,
+          })) || [],
+      })) || [];
+
+    setActiveWorkout({
+      id: session.id,
+      name: session.name,
+      workoutId: workout?.id ?? null,
+      startedAt: new Date(session.started_at),
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-ignore
+      exercises: formattedExercises,
+    });
+  };
+  const endWorkout = async () => {
+    if (!activeWorkout?.id) return;
+
+    await supabase
+      .from("workout_sessions")
+      .update({
+        status: "finished",
+        ended_at: new Date(),
+      })
+      .eq("id", activeWorkout.id);
+
+    setActiveWorkout(null);
+    setElapsedTime(0);
+  };
+
+  const resetWorkout = async () => {
+    if (!activeWorkout?.id) return;
+
+    await supabase
+      .from("workout_sessions")
+      .update({
+        status: "discarded",
+        ended_at: new Date(),
+      })
+      .eq("id", activeWorkout.id);
+
+    setActiveWorkout(null);
+    setElapsedTime(0);
+  };
+
+  const addExercise = async (exercise: any) => {
+    if (!activeWorkout) return;
+
+    const exerciseName =
+      exercise.jsonContents?.[0]?.content?.name ||
+      exercise.folder?.replace(/_/g, " ") ||
+      "Unknown Exercise";
+
+    const firstSet = activeWorkout.exercises?.[0]?.sets?.[0] || null;
+
+    const isRepRange = firstSet ? firstSet.rep_range_min !== null : false;
+
+    const defaultSet = isRepRange
+      ? {
+          weight: 0,
+          reps: null,
+          rep_range_min: 8,
+          rep_range_max: 12,
+          checked: false,
+        }
+      : {
+          weight: 0,
+          reps: 0,
+          rep_range_min: null,
+          rep_range_max: null,
+          checked: false,
+        };
+    const { data: newExercise, error } = await supabase
+      .from("workout_session_exercises")
+      .insert([
+        {
+          workout_session_id: activeWorkout.id,
+          name: exerciseName,
+          notes: exercise.notes || "",
+          rest_timer: exercise.rest_timer || null,
+          exercise_image: exercise.images?.[0] || null,
+          order_index: activeWorkout.exercises.length,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error || !newExercise) {
+      console.error("Error adding exercise:", error);
+      return;
+    }
+
+    const { data: insertedSets, error: setError } = await supabase
+      .from("workout_sets")
+      .insert([
+        {
+          exercise_id: newExercise.id,
+          set_number: 1,
+          weight: defaultSet.weight,
+          reps: defaultSet.reps,
+          rep_range_min: defaultSet.rep_range_min,
+          rep_range_max: defaultSet.rep_range_max,
+          checked: false,
+        },
+      ])
+      .select();
+
+    if (setError) {
+      console.error("Error inserting sets:", setError);
+      return;
+    }
+
+    setActiveWorkout((prev: any) => {
+      if (!prev) return prev;
+
+      const exists = prev.exercises.some((ex: any) => ex.id === newExercise.id);
+
+      if (exists) return prev;
+
+      return {
+        ...prev,
+        exercises: [
+          ...prev.exercises,
+          {
+            ...newExercise,
+            sets: insertedSets || [], // ✅ FIXED
+          },
+        ],
+      };
+    });
+  };
+
+  const addSet = async (exerciseId: string, newSet: any) => {
+    if (!activeWorkout) return;
+
+    const { data: createdSet, error } = await supabase
+      .from("workout_sets")
+      .insert({
+        exercise_id: exerciseId,
+        set_number: newSet.set_number,
+        weight: newSet.weight,
+        reps: newSet.reps,
+        rep_range_min: newSet.rep_range_min,
+        rep_range_max: newSet.rep_range_max,
+        checked: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error adding set:", error);
+      return;
+    }
+
+    setActiveWorkout((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        exercises: prev.exercises.map((exercise) => {
+          if (exercise.id !== exerciseId) return exercise;
+
+          const setExists = exercise.sets?.some(
+            (set: any) => set.id === createdSet.id,
+          );
+
+          if (setExists) {
+            return exercise;
+          }
+
+          return {
+            ...exercise,
+            sets: [...(exercise.sets || []), createdSet],
+          };
+        }),
+      };
+    });
+  };
+
+  const removeSet = async (exerciseId: string, setId: string) => {
+    if (!activeWorkout) return;
+
+    const { error } = await supabase
+      .from("workout_sets")
+      .delete()
+      .eq("id", setId);
+
+    if (error) {
+      console.error("Error deleting set from database:", error);
+      return;
+    }
+
+    const exercise = activeWorkout.exercises.find((ex) => ex.id === exerciseId);
+
+    if (!exercise) return;
+
+    const filtered = exercise.sets.filter((set) => set.id !== setId);
+
+    for (let i = 0; i < filtered.length; i++) {
+      await supabase
+        .from("workout_sets")
+        .update({ set_number: i + 1 })
+        .eq("id", filtered[i].id);
+    }
+
+    setActiveWorkout((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+
+          const renumbered = filtered.map((set, index) => ({
+            ...set,
+            set_number: index + 1,
+          }));
+
+          return {
+            ...ex,
+            sets: renumbered,
+          };
+        }),
+      };
+    });
+  };
+
+  const updateSet = async (
+    exerciseId: string,
+    setId: string,
+    data: Partial<Set>,
+  ) => {
+    if (!activeWorkout) return;
+
+    // 🔥 Update locally
+    setActiveWorkout((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) =>
+          ex.id === exerciseId
+            ? {
+                ...ex,
+                sets: ex.sets.map((s) =>
+                  s.id === setId
+                    ? {
+                        ...s,
+                        ...data,
+                      }
+                    : s,
+                ),
+              }
+            : ex,
+        ),
+      };
+    });
+
+    const { error } = await supabase
+      .from("workout_sets")
+      .update(data)
+      .eq("id", setId);
+
+    if (error) {
+      console.error("Error updating set:", error);
+    }
+  };
+
+  const openStartWorkoutModal = (workout?: Workout | ActiveWorkout) => {
+    setSelectedWorkout(workout || null);
+    setStartWorkoutModalOpen(true);
+  };
+
+  const closeStartWorkoutModal = () => {
+    setSelectedWorkout(null);
+    setStartWorkoutModalOpen(false);
+  };
+
+  const resumeWorkout = () => {
+    if (!activeWorkout) return;
+
+    setForceOpenWorkoutModal(true);
+    setSelectedWorkout(activeWorkout);
+  };
+
+  return (
+    <LogWorkoutContext.Provider
+      value={{
+        activeWorkout,
+        startWorkout,
+        endWorkout,
+        addExercise,
+        updateSet,
+        elapsedTime,
+        resetWorkout,
+        startWorkoutModalOpen,
+        openStartWorkoutModal,
+        closeStartWorkoutModal,
+        selectedWorkout,
+        addSet,
+        removeSet,
+        resumeWorkout,
+        forceOpenWorkoutModal,
+        setForceOpenWorkoutModal,
+        handleMinimize,
+        setMiniMize,
+        miniMize,
+        setStartWorkoutModalOpen,
+      }}
+    >
+      {children}
+    </LogWorkoutContext.Provider>
+  );
+};

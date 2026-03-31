@@ -1,40 +1,20 @@
 import { useAuth } from "@/auth/useAuth";
 import supabase from "@/lib/supabase";
 import type { UserProfile } from "@/lib/types";
-import { ClipboardList, Dumbbell, History, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { useTheme } from "next-themes";
 import ToggleSwitch from "./toggle-switch";
+import { navItems } from "@/lib/utils";
 
 const Navbar = () => {
   const location = useLocation();
   const pathname = location.pathname;
   const { user: authUser } = useAuth();
   const [currentUser, setCurrentUser] = useState<UserProfile>();
-  const { theme , setTheme } = useTheme();
-  const navItems = [
-    {
-      id: "stats",
-      path: "/dashboard/stats",
-      icon: History,
-      label: "Stats",
-    },
-    {
-      id: "home",
-      path: "/dashboard",
-      icon: Plus,
-      label: "Home",
-    },
-    {
-      id: "workouts",
-      path: "/dashboard/splits",
-      icon: ClipboardList,
-      label: "Workouts",
-    },
-  ];
+  const { theme, setTheme } = useTheme();
 
   const isActive = (itemPath: string) => {
     if (itemPath === "/dashboard") {
@@ -62,7 +42,6 @@ const Navbar = () => {
 
     fetchUser();
 
-    // Subscribe to realtime changes
     const subscription = supabase
       .channel("user-changes")
       .on(
@@ -93,9 +72,6 @@ const Navbar = () => {
     <div className=" lg:flex justify-center items-center h-full min-h-screen">
       <div className="p-3 lg:flex flex-col hidden justify-center  gap-4 items-center bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl mx-4">
         <div className="flex flex-col items-center gap-20">
-          {/* <div className=" tracking-tight font-black text-2xl">
-            SPL<span className="text-orange-600">I</span>T
-          </div> */}
           <div className="flex flex-col items-center justify-start gap-4  ">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -105,38 +81,22 @@ const Navbar = () => {
                   key={item.id}
                   to={item.path}
                   className={`
-                      rounded-full p-3 transition-all duration-200
+                      rounded-full h-10 w-10 items-center flex justify-center transition-all duration-200
                       text-sm
 
-                     ${active ? "bg-orange-600 text-black font-bold px-4" : "bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
+                     ${active ? "bg-orange-600 text-black font-bold " : "bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
                   aria-label={item.label}
                 >
                   <Icon
-                    className={`stroke-[1.75px] ${active ? "stroke-black" : "stroke-white"} `}
+                    className={`stroke-[1.75px] ${active ? "dark:stroke-white stroke-black" : "dark:stroke-white stroke-black"} `}
                     size={20}
                   />
                 </Link>
-
-                // <Link
-                //   key={item.id}
-                //   to={item.path}
-                //   className={`
-                //       rounded-full px-3 py-[5px]  transition-all duration-200
-                //       text-sm
-
-                //      ${active ? "bg-orange-600 text-black font-bold px-4" : "   bg-[#FAF6FA] dark:bg-[#2d2d2d]"} `}
-                //   aria-label={item.label}
-                // >
-                //   <p>{item.label}</p>
-                // </Link>
               );
             })}
           </div>
         </div>
         <div className=" flex flex-col gap-3 items-center">
-          {/* <div className="object-cover rounded-full w-6 h-6 ring-2 ring-transparent  bg-[#9eed00] hover:scale-95 transition-all flex justify-center items-center">
-              <Plus size={16} />
-            </div> */}
           <ToggleSwitch
             onChange={handleToggleChange}
             defaultChecked={theme === "dark"}

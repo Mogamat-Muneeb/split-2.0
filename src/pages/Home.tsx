@@ -1,12 +1,11 @@
-import { Button } from "@/components/ui/button";
-import { Dumbbell, Play, Plus } from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Dumbbell, Play } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import type { Workout } from "@/lib/types";
-
-
+import { useLogWorkout } from "@/provider/LogWorkoutProvider";
 
 const Home = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -14,9 +13,9 @@ const Home = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [hoveredWorkout, setHoveredWorkout] = useState<string | null>(null);
+  const { openStartWorkoutModal, activeWorkout, setMiniMize } = useLogWorkout();
 
   useEffect(() => {
-    // Check if device is mobile
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1019);
     };
@@ -35,7 +34,6 @@ const Home = () => {
         setIsLoading(true);
         setError(null);
 
-        // 1️⃣ fetch initial workouts for the current user
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -53,6 +51,7 @@ const Home = () => {
               exercise_id,
               name,
               notes,
+              exercise_image,
               rest_timer,
               position,
               sets(
@@ -70,11 +69,10 @@ const Home = () => {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-ignore
         setWorkouts(workoutsData || []);
 
-        console.log("workoutsData", workoutsData);
-
-        // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase
           .channel(`public:workouts:user_id=eq.${user.id}`)
           .on(
@@ -86,17 +84,16 @@ const Home = () => {
               filter: `user_id=eq.${user.id}`,
             },
             (payload) => {
-              console.log("Realtime workout update:", payload);
-              setWorkouts((prev) => {
+              setWorkouts((prev: any) => {
                 switch (payload.eventType) {
                   case "INSERT":
                     return [payload.new, ...prev];
                   case "UPDATE":
-                    return prev.map((w) =>
+                    return prev.map((w: any) =>
                       w.id === payload.new.id ? payload.new : w,
                     );
                   case "DELETE":
-                    return prev.filter((w) => w.id !== payload.old.id);
+                    return prev.filter((w: any) => w.id !== payload.old.id);
                   default:
                     return prev;
                 }
@@ -121,12 +118,6 @@ const Home = () => {
     };
   }, []);
 
-  const openModal = () => {
-    // Your modal logic here
-    console.log("Open modal");
-  };
-
-  // Loading skeleton component
   const LoadingSkeleton = () => (
     <div className="space-y-3">
       {[1, 2, 3].map((i) => (
@@ -148,8 +139,10 @@ const Home = () => {
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
       <div>
-        <h2 className="text-orange-600 font-black text-2xl tracking-tight">Workouts</h2>
-        <p>Choose a routine or start fresh.</p>
+        <h2 className="text-orange-600 font-black text-2xl tracking-tight">
+          Workouts
+        </h2>
+        <p className="text-sm">Choose a routine or start fresh.</p>
       </div>
 
       <div>
@@ -160,11 +153,21 @@ const Home = () => {
             transition={{ type: "spring", stiffness: 300 }}
           >
             <div>
-              <h2 className="text-base font-bold">Empty Workout</h2>
-              <p className="text-sm">Build your session as you go</p>
+              <h2 className="text-base tracking-tight font-bold text-white dark:text-accent-foreground">
+                Empty Workout
+              </h2>
+              <p className="text-sm text-white dark:text-accent-foreground">
+                Build your session as you go
+              </p>
             </div>
             <motion.div
-              className="rounded-full p-3 w-fit bg-white"
+              onClick={() => {
+                openStartWorkoutModal();
+
+                setMiniMize(false);
+                localStorage.setItem("miniMize", JSON.stringify(false));
+              }}
+              className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground"
               whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
@@ -178,11 +181,13 @@ const Home = () => {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <div>
-                <h2 className="text-base font-bold">Manage Workout</h2>
+                <h2 className="text-base font-bold tracking-tight">
+                  Manage Workout
+                </h2>
                 <p className="text-sm">Edit your saved workouts</p>
               </div>
               <motion.div
-                className="rounded-2xl p-3 w-fit bg-white"
+                className="rounded-2xl p-3 w-fit dark:bg-white bg-accent-foreground"
                 whileHover={{ scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 400 }}
               >
@@ -198,14 +203,18 @@ const Home = () => {
 
       <div className="flex flex-col gap-5">
         <div className="flex w-full justify-between items-center">
-          <h2 className="font-bold">My workouts</h2>
-          <p className="text-orange-600">View all</p>
+          <h2 className="font-bold tracking-tight">My workouts</h2>
+          <p className="text-orange-600 text-sm">View all</p>
         </div>
 
         <div className="mt-4 flex items-center w-full">
           <div className="w-full">
             {/* Loading State */}
-            {isLoading && <LoadingSkeleton />}
+            {isLoading && (
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Loading workouts..
+              </p>
+            )}
 
             {/* Error State */}
             {error && !isLoading && (
@@ -225,7 +234,7 @@ const Home = () => {
             {/* Workouts List */}
             {!isLoading && !error && workouts.length === 0 && (
               <div className="p-8 text-center bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl">
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
                   No workouts yet. Create your first workout!
                 </p>
               </div>
@@ -239,7 +248,7 @@ const Home = () => {
 
                   return (
                     <motion.div
-                      key={workout.id}
+                      key={workout.id + Math.random}
                       className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl mb-2 flex items-center justify-between"
                       onHoverStart={() =>
                         !isMobile && setHoveredWorkout(workout.id)
@@ -249,25 +258,51 @@ const Home = () => {
                       transition={{ type: "spring", stiffness: 300 }}
                     >
                       <div className="w-full flex flex-col">
-                        <h3 className="font-bold tracking-tight truncate">{workout.name}</h3>
+                        <h3 className="lg:flex hidden font-bold tracking-tight truncate">
+                          {workout.name}
+                        </h3>
+
+                        <h3 className="flex lg:hidden font-bold tracking-tight truncate">
+                          {workout.name.length > 15
+                            ? `${workout.name.slice(0, 15)}...`
+                            : workout.name}
+                        </h3>
+
                         <div className="mt-3 flex items-center text-sm">
                           <p className="mr-1 whitespace-nowrap">
                             {workout.workout_exercises?.length} Exercises •
                           </p>
                           <p className="truncate">
-                            {workout.workout_exercises
-                              .slice(0, 2)
-                              ?.map((exercise) => exercise.name)
-                              .join(", ")}
-                            {workout.workout_exercises?.length > 2 && " ..."}
+                            {workout?.workout_exercises &&
+                              workout?.workout_exercises
+                                .slice(0, 1)
+                                ?.map((exercise) => exercise.name)
+                                .join(", ")}
+
+                            {workout?.workout_exercises &&
+                              workout?.workout_exercises?.length > 1 &&
+                              " ..."}
                           </p>
                         </div>
                       </div>
                       <div>
-                        {/* Always visible on mobile, only on hover for desktop */}
                         {isMobile ? (
                           <motion.div
-                            className="rounded-full p-3 w-fit bg-white cursor-pointer"
+                            onClick={async () => {
+                              if (!activeWorkout) {
+                                // await handleStart(workout);
+
+                                openStartWorkoutModal(workout);
+                              } else {
+                                setMiniMize(false);
+                                localStorage.setItem(
+                                  "miniMize",
+                                  JSON.stringify(false),
+                                );
+                                openStartWorkoutModal(workout);
+                              }
+                            }}
+                            className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.2 }}
@@ -282,7 +317,20 @@ const Home = () => {
                           <AnimatePresence>
                             {isHovered && (
                               <motion.div
-                                className="rounded-full p-3 w-fit bg-white cursor-pointer"
+                                onClick={async () => {
+                                  if (!activeWorkout) {
+                                    // await handleStart(workout);
+                                    openStartWorkoutModal(workout);
+                                  } else {
+                                    setMiniMize(false);
+                                    localStorage.setItem(
+                                      "miniMize",
+                                      JSON.stringify(false),
+                                    );
+                                    openStartWorkoutModal(workout);
+                                  }
+                                }}
+                                className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.8 }}

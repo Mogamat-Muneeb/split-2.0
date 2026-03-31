@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import CreateWorkoutModal from "@/components/create-workout-modal";
 import { Button } from "@/components/ui/button";
 import supabase from "@/lib/supabase";
@@ -37,7 +38,6 @@ const ManageWorkouts = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   useEffect(() => {
-    // Check if device is mobile
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1019);
     };
@@ -48,7 +48,6 @@ const ManageWorkouts = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Loading skeleton component
   const LoadingSkeleton = () => (
     <div className="space-y-3">
       {[1, 2, 3].map((i) => (
@@ -94,6 +93,7 @@ const ManageWorkouts = () => {
               notes,
               rest_timer,
               position,
+              exercise_image,
               sets(
                 id,
                 set_number,
@@ -109,11 +109,10 @@ const ManageWorkouts = () => {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-expect-error
         setWorkouts(workoutsData || []);
 
-
-
-        // 2️⃣ subscribe to real-time changes on workouts
         subscription = supabase
           .channel(`public:workouts:user_id=eq.${user.id}`)
           .on(
@@ -125,7 +124,8 @@ const ManageWorkouts = () => {
               filter: `user_id=eq.${user.id}`,
             },
             (payload) => {
-              console.log("Realtime workout update:", payload);
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-expect-error
               setWorkouts((prev) => {
                 switch (payload.eventType) {
                   case "INSERT":
@@ -161,7 +161,7 @@ const ManageWorkouts = () => {
   }, []);
 
   const openModal = () => {
-    setWorkoutToEdit(null); // Reset when creating new
+    setWorkoutToEdit(null);
     setIsModalOpen(true);
   };
 
@@ -187,7 +187,6 @@ const ManageWorkouts = () => {
     try {
       setIsDeleting(true);
 
-      // First, delete all sets associated with this workout's exercises
       const { data: workoutExercises } = await supabase
         .from("workout_exercises")
         .select("id")
@@ -196,7 +195,6 @@ const ManageWorkouts = () => {
       if (workoutExercises && workoutExercises.length > 0) {
         const exerciseIds = workoutExercises.map((we) => we.id);
 
-        // Delete sets for these workout exercises
         const { error: setsError } = await supabase
           .from("sets")
           .delete()
@@ -205,7 +203,6 @@ const ManageWorkouts = () => {
         if (setsError) throw setsError;
       }
 
-      // Delete workout exercises
       const { error: exercisesError } = await supabase
         .from("workout_exercises")
         .delete()
@@ -213,7 +210,6 @@ const ManageWorkouts = () => {
 
       if (exercisesError) throw exercisesError;
 
-      // Finally, delete the workout
       const { error: workoutError } = await supabase
         .from("workouts")
         .delete()
@@ -221,10 +217,8 @@ const ManageWorkouts = () => {
 
       if (workoutError) throw workoutError;
 
-      // Update local state
       setWorkouts((prev) => prev.filter((w) => w.id !== workoutToDelete.id));
 
-      // Close modal and clear state
       setIsConfirmModalOpen(false);
       setWorkoutToDelete(null);
     } catch (err) {
@@ -246,7 +240,10 @@ const ManageWorkouts = () => {
         <h2 className="text-orange-600 font-black text-2xl tracking-tight">
           Manage workouts
         </h2>
-        <Button onClick={openModal} className="bg-orange-600 text-foreground">
+        <Button
+          onClick={openModal}
+          className="hover:bg-orange-700 bg-orange-600 text-foreground"
+        >
           New Workout
         </Button>
       </div>
@@ -255,7 +252,7 @@ const ManageWorkouts = () => {
         {isModalOpen && (
           <CreateWorkoutModal
             closeModal={closeModal}
-            workoutToEdit={workoutToEdit} // Pass the workout to edit
+            workoutToEdit={workoutToEdit}
           />
         )}
       </AnimatePresence>
@@ -292,10 +289,12 @@ const ManageWorkouts = () => {
 
       <div className="mt-4 flex items-center w-full">
         <div className="w-full">
-          {/* Loading State */}
-          {isLoading && <LoadingSkeleton />}
+          {isLoading && (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Loading workouts..
+            </p>
+          )}
 
-          {/* Error State */}
           {error && !isLoading && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-3xl">
               <p className="text-red-600 dark:text-red-400 text-sm">
@@ -310,10 +309,9 @@ const ManageWorkouts = () => {
             </div>
           )}
 
-          {/* Workouts List */}
           {!isLoading && !error && workouts.length === 0 && (
             <div className="p-8 text-center bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl">
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
                 No workouts yet. Create your first workout!
               </p>
             </div>
@@ -323,7 +321,6 @@ const ManageWorkouts = () => {
             {!isLoading &&
               !error &&
               workouts.map((workout) => {
-                console.log("🚀 ~ ManageWorkouts ~ workout:", workout);
                 const isHovered = hoveredWorkout === workout.id;
 
                 return (
@@ -333,25 +330,34 @@ const ManageWorkouts = () => {
                     onHoverStart={() =>
                       !isMobile && setHoveredWorkout(workout.id)
                     }
-                    // onHoverEnd={() => !isMobile && setHoveredWorkout(null)}
                     whileHover={{ scale: 1.02 }}
                     transition={{ type: "spring", stiffness: 300 }}
                     onClick={() => openEditModal(workout)}
                   >
                     <div className="w-full flex flex-col">
-                      <h3 className="font-bold tracking-tight truncate">
+                      <h3 className="lg:flex hidden font-bold tracking-tight truncate">
                         {workout.name}
                       </h3>
+
+                      <h3 className="flex lg:hidden font-bold tracking-tight truncate">
+                        {workout.name.length > 15
+                          ? `${workout.name.slice(0, 15)}...`
+                          : workout.name}
+                      </h3>
+
                       <div className="mt-3 flex items-center text-sm">
                         <p className="mr-1 whitespace-nowrap">
-                          {workout.workout_exercises?.length} Exercises •
+                          {workout?.workout_exercises?.length} Exercises •
                         </p>
                         <p className="truncate">
-                          {workout.workout_exercises
-                            .slice(0, 2)
-                            .map((exercise) => exercise.name)
-                            .join(", ")}
-                          {workout.workout_exercises?.length > 2 && " ..."}
+                          {workout?.workout_exercises &&
+                            workout?.workout_exercises
+                              .slice(0, 2)
+                              ?.map((exercise) => exercise.name)
+                              .join(", ")}
+                          {workout?.workout_exercises &&
+                            workout?.workout_exercises?.length > 2 &&
+                            " ..."}
                         </p>
                       </div>
                     </div>

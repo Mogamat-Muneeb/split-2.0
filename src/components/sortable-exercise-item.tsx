@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
-import type { Exercise, Set, WorkoutExercise } from "./create-workout-modal";
 import {
   DndContext,
   closestCenter,
@@ -33,8 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "./ui/input";
-import SortableSetItem from "./Sortable-Set-Item";
 import { Button } from "./ui/button";
+import type { Exercise, WorkoutExercise } from "@/lib/types";
+import SortableSetItem from "./sortable-set-item";
 
 const SortableExerciseItem: React.FC<{
   exercise: Exercise;
@@ -44,6 +44,8 @@ const SortableExerciseItem: React.FC<{
     folder: string,
     updates: Partial<WorkoutExercise>,
   ) => void;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  //@ts-ignore
   updateSet: (folder: string, setIndex: number, updates: Partial<Set>) => void;
   addSet: (folder: string) => void;
   removeSet: (folder: string, setIndex: number) => void;
@@ -55,12 +57,12 @@ const SortableExerciseItem: React.FC<{
 }> = ({
   exercise,
   workoutExercise,
-  setForm,
+
   updateWorkoutExercise,
   updateSet,
   addSet,
   removeSet,
-  updateSetForm,
+
   removeExercise,
   onSetDragEnd,
   onSetDragStart,
@@ -86,7 +88,7 @@ const SortableExerciseItem: React.FC<{
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="flex flex-col gap-4 bg-accent rounded-xl px-3 py-4"
+      className="flex flex-col gap-4 bg-accent rounded-xl p-4"
     >
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center w-full gap-2">
@@ -148,7 +150,7 @@ const SortableExerciseItem: React.FC<{
             })
           }
         >
-          <SelectTrigger className="w-full max-w-48">
+          <SelectTrigger className="w-fit max-h-fit">
             <SelectValue placeholder="Select a timer" />
           </SelectTrigger>
           <SelectContent>
@@ -166,7 +168,6 @@ const SortableExerciseItem: React.FC<{
         </Select>
       </div>
 
-      {/* Display existing sets - now sortable */}
       {workoutExercise?.sets && workoutExercise.sets.length > 0 && (
         <div className="w-full">
           <DndContext
@@ -181,7 +182,63 @@ const SortableExerciseItem: React.FC<{
               )}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-3">
+              <div className="grid grid-cols-4 px-2 items-center w-full  !text-xs tracking-tight gap-2">
+                <div className="flex items-center">
+                  <div className="w-7"></div>
+                  <div>SET</div>
+                </div>
+
+                <div className="flex items-center justify-center w-full">
+                  KG
+                </div>
+
+                <div className="flex flex-col items-center justify-center w-full">
+                  <Select
+                    value={workoutExercise.sets[0]?.repType || "reps"}
+                    onValueChange={(value: "reps" | "repRange") => {
+                      // Create updated sets array
+                      const updatedSets = workoutExercise.sets.map((set) => ({
+                        ...set,
+                        repType: value,
+                        ...(value === "reps"
+                          ? {
+                              reps: set.reps || 0,
+                              repRangeMin: undefined,
+                              repRangeMax: undefined,
+                            }
+                          : {
+                              reps: undefined,
+                              repRangeMin: set.repRangeMin || 0,
+                              repRangeMax: set.repRangeMax || 0,
+                            }),
+                      }));
+
+                      // Update the entire workout exercise with all sets at once
+                      updateWorkoutExercise(exercise.folder, {
+                        sets: updatedSets,
+                      });
+                    }}
+                  >
+                    <SelectTrigger
+                      size="sm"
+                      className="border-0 w-auto p-1 !bg-transparent"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Rep type</SelectLabel>
+                        <SelectItem value="reps">Reps</SelectItem>
+                        <SelectItem value="repRange">Rep Range</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-end"></div>
+              </div>
+
+              <div className="">
                 {workoutExercise.sets.map((set, setIndex) => (
                   <SortableSetItem
                     key={`${exercise.folder}-set-${setIndex}`}
@@ -197,111 +254,9 @@ const SortableExerciseItem: React.FC<{
           </DndContext>
         </div>
       )}
-
-      {/* Add new set form */}
-      <div className="w-full border-t pt-4">
-        <div className="w-full flex justify-between items-center gap-2">
-          <div className="w-fit flex flex-col">
-            <h2 className="text-sm">Set</h2>
-            <Input
-              className="w-20"
-              type="number"
-              placeholder={
-                workoutExercise?.sets.length
-                  ? (workoutExercise.sets.length + 1).toString()
-                  : "1"
-              }
-              disabled
-              value={
-                workoutExercise?.sets.length
-                  ? workoutExercise.sets.length + 1
-                  : 1
-              }
-            />
-          </div>
-          <div className="w-fit">
-            <h2 className="text-sm">kgs</h2>
-            <Input
-              type="number"
-              placeholder="0"
-              value={setForm?.weight || ""}
-              onChange={(e) =>
-                updateSetForm(exercise.folder, "weight", e.target.value)
-              }
-              className="w-24"
-            />
-          </div>
-          <div>
-            <div className="flex items-center gap-1">
-              <h2 className="text-sm">Reps</h2>
-              <Select
-                value={setForm?.repType || "reps"}
-                onValueChange={(value: "reps" | "repRange") =>
-                  updateSetForm(exercise.folder, "repType", value)
-                }
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="bg-transparent! border-0 w-auto"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Select rep type</SelectLabel>
-                    <SelectItem value="reps">Reps</SelectItem>
-                    <SelectItem value="repRange">Rep Range</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            {setForm?.repType === "reps" ? (
-              <Input
-                type="number"
-                placeholder="0"
-                value={setForm?.reps || ""}
-                onChange={(e) =>
-                  updateSetForm(exercise.folder, "reps", e.target.value)
-                }
-                className="w-24"
-              />
-            ) : (
-              <div className="flex gap-2 items-center">
-                <Input
-                  type="number"
-                  placeholder="Min"
-                  value={setForm?.repRangeMin || ""}
-                  onChange={(e) =>
-                    updateSetForm(
-                      exercise.folder,
-                      "repRangeMin",
-                      e.target.value,
-                    )
-                  }
-                  className="w-20"
-                />
-                <span>-</span>
-                <Input
-                  type="number"
-                  placeholder="Max"
-                  value={setForm?.repRangeMax || ""}
-                  onChange={(e) =>
-                    updateSetForm(
-                      exercise.folder,
-                      "repRangeMax",
-                      e.target.value,
-                    )
-                  }
-                  className="w-20"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        <Button onClick={() => addSet(exercise.folder)} className="w-full mt-3">
-          Add set
-        </Button>
-      </div>
+      <Button onClick={() => addSet(exercise.folder)} className="w-full mt-3">
+        Add set
+      </Button>
     </div>
   );
 };

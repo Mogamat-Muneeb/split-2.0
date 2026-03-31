@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import Splits from "./pages/splits";
 import ManageWorkouts from "./pages/ManageWorkouts";
+import Measure from "./pages/Measure";
 
 export default function App() {
   return (
@@ -21,7 +22,7 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="stats" element={<Splits />} />
+        <Route path="stats" element={<Measure />} />
         <Route path="splits" element={<Splits />} />
         <Route path="manage-workouts" element={<ManageWorkouts />} />
         <Route

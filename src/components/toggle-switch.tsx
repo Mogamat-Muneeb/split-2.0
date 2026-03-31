@@ -32,7 +32,7 @@ const ToggleSwitch = ({
         />
         {isThemeToggle ? (
           <>
-            <div className="flex flex-col rounded-3xl p-1 dark:bg-accent bg-white">
+            <div className="flex lg:flex-col flex-row rounded-3xl p-1 dark:bg-accent bg-white">
               <div
                 className={`rounded-full h-7 w-7 p-2 flex items-center justify-center transition-all duration-200 ${
                   !isChecked ? "bg-orange-600" : "bg-transparent"

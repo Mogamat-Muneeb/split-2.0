@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "./ui/input";
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, ArrowLeft } from "lucide-react";
 
 import {
   DndContext,
@@ -23,34 +24,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
-import type { Workout } from "@/lib/types";
+import type { Exercise, Set, Workout, WorkoutExercise } from "@/lib/types";
 import { Button } from "./ui/button";
 import SortableExerciseItem from "./sortable-exercise-item";
-
-export interface ExerciseJsonContent {
-  [key: string]: any;
-}
-
-export interface Exercise {
-  folder: string;
-  images: string[];
-  jsonContents: ExerciseJsonContent[];
-}
-
-export interface Set {
-  weight: number;
-  repType: "reps" | "repRange";
-  reps?: number;
-  repRangeMin?: number;
-  repRangeMax?: number;
-}
-
-export interface WorkoutExercise {
-  exercise: Exercise;
-  notes: string;
-  restTimer: string;
-  sets: Set[];
-}
 
 interface CreateWorkoutModalProps {
   closeModal: () => void;
@@ -67,12 +43,13 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const [workoutName, setWorkoutName] = useState("");
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>(
+  const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[] | any[]>(
     [],
   );
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingWorkout, setIsLoadingWorkout] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const [showLibrary, setShowLibrary] = useState(false);
 
   useEffect(() => {
     if (workoutToEdit) {
@@ -85,7 +62,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const loadWorkoutExercises = async (workout: Workout) => {
     setIsLoadingWorkout(true);
     try {
-      // Fetch the full workout data with exercises and sets
       const { data, error } = await supabase
         .from("workouts")
         .select(
@@ -103,12 +79,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       if (error) throw error;
 
       if (data) {
-        // Transform the data to match your WorkoutExercise structure
         const loadedExercises = data.workout_exercises.map((we: any) => ({
           exercise: {
             folder: we.exercise_id,
-            images: [], // You'll need to fetch these from your exercise library
-            jsonContents: [], // You'll need to fetch these from your exercise library
+            images: we.exercise_image ? [we.exercise_image] : [],
+            jsonContents: [],
           },
           notes: we.notes || "",
           restTimer: we.rest_timer || "off",
@@ -120,11 +95,12 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
             repRangeMax: set.rep_range_max,
           })),
         }));
-
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-expect-error
         setSelectedExercises(loadedExercises.map((le) => le.exercise));
         setWorkoutExercises(loadedExercises);
-
-        // Initialize set forms for each exercise
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-expect-error
         loadedExercises.forEach((le) => {
           initializeSetForm(le.exercise.folder);
         });
@@ -163,7 +139,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       try {
         setLoading(true);
         const { exercises } = await getFoldersAndContents();
-        console.log("🚀 ~ fetchData ~ exercises:", exercises);
+
         setExercises(exercises);
         setError(null);
       } catch (err) {
@@ -201,10 +177,18 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
           exercise: exercise,
           notes: "",
           restTimer: "off",
-          sets: [],
+          sets: [
+            {
+              weight: 0,
+              repType: "reps",
+              reps: 0,
+            },
+          ],
         },
       ]);
       initializeSetForm(exercise.folder);
+      // After adding exercise, switch back to workout details view on mobile
+      setShowLibrary(false);
     }
   };
 
@@ -239,63 +223,48 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const updateSet = (
     folder: string,
     setIndex: number,
-    updates: Partial<Set>,
+    updates: Partial<Set> | ((currentSet: Set) => Partial<Set>),
   ) => {
     setWorkoutExercises(
-      workoutExercises.map((we) =>
-        we.exercise.folder === folder
-          ? {
-              ...we,
-              sets: we.sets.map((set, index) =>
-                index === setIndex ? { ...set, ...updates } : set,
-              ),
-            }
-          : we,
-      ),
+      workoutExercises.map((we) => {
+        if (we.exercise.folder !== folder) return we;
+
+        return {
+          ...we,
+          sets: we.sets.map((set: Set, index: number) => {
+            if (index !== setIndex) return set;
+
+            const newUpdates =
+              typeof updates === "function" ? updates(set) : updates;
+
+            return { ...set, ...newUpdates };
+          }),
+        };
+      }),
     );
   };
 
   const addSet = (folder: string) => {
-    const formData = newSetForm[folder];
-    if (!formData) return;
+    setWorkoutExercises((prev) =>
+      prev.map((we) => {
+        if (we.exercise.folder !== folder) return we;
 
-    const newSet: Set = {
-      weight: parseFloat(formData.weight) || 0,
-      repType: formData.repType,
-    };
+        const lastSet = we.sets[we.sets.length - 1];
 
-    if (formData.repType === "reps") {
-      newSet.reps = parseInt(formData.reps) || 0;
-    } else {
-      newSet.repRangeMin = parseInt(formData.repRangeMin) || 0;
-      newSet.repRangeMax = parseInt(formData.repRangeMax) || 0;
-    }
+        const newSet: Set = lastSet
+          ? { ...lastSet }
+          : { weight: 0, repType: "reps", reps: 0 };
 
-    setWorkoutExercises(
-      workoutExercises.map((we) =>
-        we.exercise.folder === folder
-          ? { ...we, sets: [...we.sets, newSet] }
-          : we,
-      ),
+        return { ...we, sets: [...we.sets, newSet] };
+      }),
     );
-
-    setNewSetForm((prev) => ({
-      ...prev,
-      [folder]: {
-        weight: "",
-        repType: "reps",
-        reps: "",
-        repRangeMin: "",
-        repRangeMax: "",
-      },
-    }));
   };
 
   const removeSet = (folder: string, setIndex: number) => {
     setWorkoutExercises(
       workoutExercises.map((we) =>
         we.exercise.folder === folder
-          ? { ...we, sets: we.sets.filter((_, index) => index !== setIndex) }
+          ? { ...we, sets: we.sets.filter((_: any, index: number) => index !== setIndex) }
           : we,
       ),
     );
@@ -336,8 +305,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       );
       setWorkoutExercises(newWorkoutExercises);
     }
-
-    setActiveId(null);
   };
 
   const handleSetDragEnd = (event: DragEndEvent, folder: string) => {
@@ -363,12 +330,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
     }
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
   const handleSetDragStart = (event: DragStartEvent, folder: string) => {
-    console.log(`Dragging set ${event.active.id} in folder ${folder}`);
+    console.warn(`Dragging set ${event.active.id} in folder ${folder}`);
   };
 
   const handleSaveWorkout = async () => {
@@ -438,18 +401,21 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   };
 
   // Helper function to insert exercises and sets
-  const insertExercisesAndSets = async (workoutId: string, userId: string) => {
+  const insertExercisesAndSets = async (workoutId: string, _userId: string) => {
     // Insert workout exercises
-    const exercisesPayload = workoutExercises.map((we, index) => ({
-      workout_id: workoutId,
-      exercise_id: we.exercise.folder,
-      name:
-        we.exercise.jsonContents?.[0]?.content?.name ||
-        we.exercise.folder.replace(/_/g, " "),
-      notes: we.notes,
-      rest_timer: we.restTimer,
-      position: index,
-    }));
+    const exercisesPayload = workoutExercises.map((we, index) => {
+      return {
+        workout_id: workoutId,
+        exercise_id: we.exercise.folder,
+        name:
+          we.exercise.jsonContents?.[0]?.content?.name ||
+          we.exercise.folder.replace(/_/g, " "),
+        notes: we.notes,
+        rest_timer: we.restTimer,
+        position: index,
+        exercise_image: we.exercise.images?.[0] || null,
+      };
+    });
 
     const { data: insertedExercises, error: exercisesError } = await supabase
       .from("workout_exercises")
@@ -458,7 +424,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
 
     if (exercisesError) throw exercisesError;
 
-    // Insert sets
     const setsPayload = insertedExercises.flatMap((ex) => {
       const original = workoutExercises.find(
         (we) => we.exercise.folder === ex.exercise_id,
@@ -466,7 +431,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
 
       if (!original) return [];
 
-      return original.sets.map((set, i) => ({
+      return original.sets.map((set: { weight: any; repType: string; reps: any; repRangeMin: any; repRangeMax: any; }, i: number) => ({
         workout_exercise_id: ex.id,
         set_number: i + 1,
         weight: set.weight,
@@ -491,7 +456,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
 
     if (!exerciseContent) return false;
 
-    // Combine all searchable fields into an array of strings to check
     const searchableText = [
       exercise.folder,
       exerciseContent.name,
@@ -504,11 +468,33 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
       ...(exerciseContent.secondaryMuscles || []),
     ];
 
-    // Check if any field contains the search term
     return searchableText.some((field) =>
       field?.toString().toLowerCase().includes(searchLower),
     );
   });
+
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const shouldShowWorkoutDetails = () => {
+    if (!isMobileView) return true;
+    return !showLibrary;
+  };
+
+  const shouldShowLibrary = () => {
+    if (!isMobileView) return true;
+    return showLibrary;
+  };
 
   return (
     <>
@@ -525,193 +511,237 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl  "
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl"
       >
-        <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4  ">
-          <div className="flex flex-col md:flex-row gap-6">
+        <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 shadow-xl p-4 lg:m-4 m-0 lg:h-full h-dvh">
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Left Column - Workout Details */}
-            <div className="flex-1  h-full">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg tracking-tight font-bold text-orange-600">
-                  New Workout
-                </h2>
-              </div>
+            {shouldShowWorkoutDetails() && (
+              <div className="flex-1 h-full">
+                <div className="flex justify-between items-center pb-4">
+                  <h2 className="text-base tracking-tight font-bold text-orange-600">
+                    New Workout
+                  </h2>
 
-              <Input
-                placeholder="Workout name"
-                value={workoutName}
-                onChange={(e) => setWorkoutName(e.target.value)}
-              />
-
-              <div className="rounded-lg overflow-y-auto mt-2  h-[50vh] max-h-[50vh]">
-                {selectedExercises.length === 0 ? (
-                  <div className="bg-accent rounded-xl px-3 py-4">
-                    <p className="font-bold text-base tracking-tight">
-                      No exercises added yet
-                    </p>
-                    <p className="text-sm">
-                      Click on exercises from the right panel to add them
-                    </p>
-                  </div>
-                ) : (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={selectedExercises.map((e) => e.folder)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <div className="space-y-4 rounded-lg">
-                        {selectedExercises.map((exercise) => {
-                          const workoutExercise = workoutExercises.find(
-                            (we) => we.exercise.folder === exercise.folder,
-                          );
-                          const setForm = newSetForm[exercise.folder];
-
-                          return (
-                            <SortableExerciseItem
-                              key={exercise.folder}
-                              exercise={exercise}
-                              workoutExercise={workoutExercise!}
-                              setForm={setForm}
-                              updateWorkoutExercise={updateWorkoutExercise}
-                              updateSet={updateSet}
-                              addSet={addSet}
-                              removeSet={removeSet}
-                              updateSetForm={updateSetForm}
-                              removeExercise={removeExercise}
-                              onSetDragEnd={handleSetDragEnd}
-                              onSetDragStart={handleSetDragStart}
-                              sensors={sensors}
-                            />
-                          );
-                        })}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-                )}
-              </div>
-
-              {selectedExercises.length > 0 && (
-                <Button
-                  onClick={handleSaveWorkout}
-                  className="w-full bg-orange-600  font-semibold rounded-lg transition-colors mt-4"
-                >
-                  Create Workout ({selectedExercises.length} exercises)
-                </Button>
-              )}
-            </div>
-
-            {/* Right Column - Exercise Library */}
-            <div className="flex-1">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Exercise Library</h3>
-                  <Input
-                    placeholder="Search exercises..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                  {isMobileView && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setShowLibrary(true)}
+                        className="bg-orange-600 text-white hover:bg-orange-700"
+                        size="sm"
+                      >
+                        Add Exercise
+                      </Button>
+                      <Button
+                        onClick={closeModal}
+                        variant="outline"
+                        className="!border-transparent"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="border rounded-lg p-4 max-h-[600px] overflow-y-auto">
-                  {isLoadingWorkout ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-2"></div>
-                        <p className="text-gray-500">Loading workout...</p>
-                      </div>
+                <Input
+                  placeholder="Workout name"
+                  value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
+                />
+
+                <div className="rounded-lg overflow-y-auto mt-2 lg:h-[60vh] lg:max-h-[60vh]  max-h-[90vh]">
+                  {selectedExercises.length === 0 ? (
+                    <div className="bg-accent rounded-xl px-3 py-4">
+                      <p className="font-bold text-base tracking-tight">
+                        No exercises added yet
+                      </p>
+                      <p className="text-sm">
+                        Click on exercises from the right panel to add them
+                      </p>
                     </div>
                   ) : (
-                    <>
-                      {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-2"></div>
-                            <p className="text-gray-500">
-                              Loading exercises...
-                            </p>
-                          </div>
-                        </div>
-                      ) : error ? (
-                        <div className="text-center py-8">
-                          <p className="text-red-500">Error: {error}</p>
-                          <button
-                            onClick={() => window.location.reload()}
-                            className="mt-2 text-blue-500 hover:text-blue-700 text-sm"
-                          >
-                            Try again
-                          </button>
-                        </div>
-                      ) : filteredExercises.length === 0 ? (
-                        <p className="text-gray-500 text-center py-8">
-                          No exercises found
-                        </p>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {filteredExercises.map((exercise) => {
-                            const exerciseData =
-                              exercise.jsonContents?.[0]?.content;
-                            const primaryMuscles =
-                              exerciseData?.primaryMuscles?.join(", ") || "N/A";
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={selectedExercises.map((e) => e.folder)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-4 rounded-lg overflow-y-auto ">
+                          {selectedExercises.map((exercise) => {
+                            const workoutExercise = workoutExercises.find(
+                              (we) => we.exercise.folder === exercise.folder,
+                            );
+                            const setForm = newSetForm[exercise.folder];
 
                             return (
-                              <motion.div
+                              <SortableExerciseItem
                                 key={exercise.folder}
-                                whileHover={{ scale: 1.02 }}
-                                className="flex items-center justify-start py-1 overflow-hidden cursor-pointer w-full"
-                                onClick={() => addExercise(exercise)}
-                              >
-                                <div className="flex items-center justify-center w-full">
-                                  <div className="flex-shrink-0">
-                                    {exercise.images[0] && (
-                                      <img
-                                        src={exercise.images[0]}
-                                        alt={exercise.folder}
-                                        className="w-10 h-10 rounded-full object-cover grayscale-100"
-                                      />
-                                    )}
-                                  </div>
-
-                                  <div className="flex items-center justify-between w-full ml-3">
-                                    <div className="flex-1">
-                                      <div className="flex justify-between items-center">
-                                        <h4 className="text-[14px] font-medium">
-                                          {exerciseData?.name ||
-                                            exercise.folder.replace(/_/g, " ")}
-                                        </h4>
-                                      </div>
-                                      <div className="flex flex-wrap gap-1 mt-2">
-                                        <span className="text-orange-600 font-medium text-[10px] rounded capitalize">
-                                          {primaryMuscles}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div>
-                                      {selectedExercises.find(
-                                        (e) => e.folder === exercise.folder,
-                                      ) && (
-                                        <CircleCheck
-                                          size={20}
-                                          className="fill-orange-600 stroke-white [&>circle]:stroke-none"
-                                        />
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
+                                exercise={exercise}
+                                workoutExercise={workoutExercise!}
+                                setForm={setForm}
+                                updateWorkoutExercise={updateWorkoutExercise}
+                                updateSet={updateSet}
+                                addSet={addSet}
+                                removeSet={removeSet}
+                                updateSetForm={updateSetForm}
+                                removeExercise={removeExercise}
+                                onSetDragEnd={handleSetDragEnd}
+                                onSetDragStart={handleSetDragStart}
+                                sensors={sensors}
+                              />
                             );
                           })}
                         </div>
-                      )}
-                    </>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
+
+                {selectedExercises.length > 0 && (
+                  <div className="lg:relative fixed bottom-0 left-0 right-0 px-4 pb-4 z-100">
+                    <Button
+                      onClick={handleSaveWorkout}
+                      className="w-full bg-orange-600 text-foreground hover:bg-orange-600 font-semibold rounded-lg transition-colors mt-4"
+                    >
+                      Create Workout ({selectedExercises.length} exercises)
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Right Column - Exercise Library */}
+            {shouldShowLibrary() && (
+              <div className="flex-1">
+                <div className="space-y-2">
+                  <div className="flex flex-col items-start">
+                    {/* Back button for mobile */}
+                    <div className="flex gap-2 items-center pb-4">
+                      {isMobileView && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowLibrary(false)}
+                          className="shrink-0"
+                        >
+                          <ArrowLeft size={20} />
+                        </Button>
+                      )}
+                      <h2 className="text-base tracking-tight font-bold ">
+                        Exercise Library
+                      </h2>
+                    </div>
+                    <Input
+                      placeholder="Search exercises..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="bg-accent rounded-lg p-4 lg:max-h-150 max-h-[95vh] overflow-y-auto">
+                    {isLoadingWorkout ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-center">
+                          <p className="text-gray-500 text-sm">
+                            Loading workout...
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {loading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="text-center">
+                              <p className="text-gray-500 text-sm">
+                                Loading exercises...
+                              </p>
+                            </div>
+                          </div>
+                        ) : error ? (
+                          <div className="text-center py-8">
+                            <p className="text-red-500">Error: {error}</p>
+                            <button
+                              onClick={() => window.location.reload()}
+                              className="mt-2 text-blue-500 hover:text-blue-700 text-sm"
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        ) : filteredExercises.length === 0 ? (
+                          <p className="text-gray-500 text-center py-8">
+                            No exercises found
+                          </p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {filteredExercises.map((exercise) => {
+                              const exerciseData =
+                                exercise.jsonContents?.[0]?.content;
+                              const primaryMuscles =
+                                exerciseData?.primaryMuscles?.join(", ") ||
+                                "N/A";
+
+                              return (
+                                <motion.div
+                                  key={exercise.folder}
+                                  whileHover={{ scale: 1.02 }}
+                                  className="flex items-center justify-start py-1 overflow-hidden cursor-pointer w-full"
+                                  onClick={() => addExercise(exercise)}
+                                >
+                                  <div className="flex items-center justify-center w-full">
+                                    <div className="flex-shrink-0">
+                                      {exercise.images[0] && (
+                                        <img
+                                          src={exercise.images[0]}
+                                          alt={exercise.folder}
+                                          className="w-10 h-10 rounded-full object-cover grayscale-100"
+                                        />
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between w-full ml-3">
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-center">
+                                          <h4 className="text-[14px] font-medium">
+                                            {exerciseData?.name ||
+                                              exercise.folder.replace(
+                                                /_/g,
+                                                " ",
+                                              )}
+                                          </h4>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                          <span className="text-orange-600 font-medium text-[10px] rounded capitalize">
+                                            {primaryMuscles}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        {selectedExercises.find(
+                                          (e) => e.folder === exercise.folder,
+                                        ) && (
+                                          <CircleCheck
+                                            size={20}
+                                            className="fill-orange-600 stroke-white [&>circle]:stroke-none"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

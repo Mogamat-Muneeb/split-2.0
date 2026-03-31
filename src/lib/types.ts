@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type UserProfile = {
   id: string;
   email: string;
@@ -13,8 +14,6 @@ export type Goal = {
   description: string | null;
   user_id: string;
   goal_tags: GoalTag[];
-
-  // deadline stuff
   deadline_type: "date" | "daily" | "every_n_days";
   deadline_date: string | null;
   deadline_interval: number | null;
@@ -85,6 +84,7 @@ export interface Set {
   reps?: number;
   rep_range_min?: number;
   rep_range_max?: number;
+  checked?: boolean
 }
 
 export interface WorkoutExercise {
@@ -95,6 +95,8 @@ export interface WorkoutExercise {
   rest_timer: string;
   position: number;
   sets: Set[];
+  exercise_image?: string;
+  order_index?: string;
 }
 
 export interface Workout {
@@ -102,4 +104,40 @@ export interface Workout {
   name: string;
   created_at: string;
   exercises: WorkoutExercise[];
+  workout_exercises?: WorkoutExercise[];
+}
+
+
+export interface ActiveWorkout {
+  id?: string;
+  workoutId?: string | null;
+  name: string;
+  startedAt: Date;
+  created_at: Date;
+  exercises: WorkoutExercise[];
+}
+
+export interface ExerciseJsonContent {
+  [key: string]: any;
+}
+
+export interface Exercise {
+  folder: string;
+  images: string[];
+  jsonContents: ExerciseJsonContent[];
+}
+
+export interface Set {
+  weight: number;
+  repType: "reps" | "repRange";
+  reps?: number;
+  repRangeMin?: number;
+  repRangeMax?: number;
+}
+
+export interface WorkoutExercise {
+  exercise: Exercise;
+  notes: string;
+  restTimer: string;
+  sets: Set[];
 }
