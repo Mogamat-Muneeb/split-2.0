@@ -37,7 +37,6 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // New state for exercise library
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +44,10 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   const [showLibrary, setShowLibrary] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
 
-  // Track rep type for each exercise
   const [exerciseRepTypes, setExerciseRepTypes] = useState<{
     [exerciseId: string]: "reps" | "repRange";
   }>({});
 
-  // Fetch exercises on mount
   useEffect(() => {
     const fetchExercises = async () => {
       try {
@@ -69,20 +66,19 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     fetchExercises();
   }, []);
 
-  // Initialize rep types based on existing sets
   useEffect(() => {
     if (activeWorkout?.exercises) {
       const repTypes: { [exerciseId: string]: "reps" | "repRange" } = {};
       activeWorkout.exercises.forEach((exercise) => {
         if (exercise.sets && exercise.sets.length > 0) {
           const firstSet = exercise.sets[0];
-          // Determine if it's rep range based on rep_range_min/max
+
           const isRepRange =
             firstSet.rep_range_min !== null &&
             firstSet.rep_range_min !== undefined;
           repTypes[exercise.id] = isRepRange ? "repRange" : "reps";
         } else {
-          repTypes[exercise.id] = "reps"; // default
+          repTypes[exercise.id] = "reps";
         }
       });
       setExerciseRepTypes(repTypes);
@@ -295,7 +291,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
 
   return (
     <div className="">
-      <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 p-4 lg:h-full h-dvh">
+      <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 py-4 lg:h-full h-fit">
         <div className="flex flex-col md:flex-row gap-4">
           {shouldShowWorkoutDetails() && (
             <div className="flex-1 space-y-4 ">
@@ -417,9 +413,9 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                                     set.weight,
                                   )
                                 }
-                                className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                                className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-xs"
                               >
-                                <span>{set.weight} kg</span>
+                                <span>{set.weight}</span>
                               </div>
                             )}
                           </div>
@@ -455,7 +451,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                                     set.reps !== null ? set.reps : null,
                                   );
                                 }}
-                                className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm cursor-pointer"
+                                className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm cursor-pointer  text-xs"
                               >
                                 <span>
                                   {set.reps !== null ? `${set.reps}` : "0"}

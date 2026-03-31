@@ -26,6 +26,10 @@ interface LogWorkoutContextType {
   forceOpenWorkoutModal: boolean;
   selectedWorkout: Workout | ActiveWorkout | null;
   setForceOpenWorkoutModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setMiniMize: React.Dispatch<React.SetStateAction<boolean>>;
+  miniMize: boolean;
+  handleMinimize: () => void;
+  setStartWorkoutModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const LogWorkoutContext = createContext<LogWorkoutContextType | undefined>(
@@ -47,6 +51,40 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   );
   const [elapsedTime, setElapsedTime] = useState(0);
   const [forceOpenWorkoutModal, setForceOpenWorkoutModal] = useState(false);
+
+  const [miniMize, setMiniMize] = useState<boolean>(() =>
+    JSON.parse(localStorage.getItem("miniMize") || "false"),
+  );
+  console.log("🚀 ~ LogWorkoutProvider ~ miniMize:", miniMize);
+
+  // const handleMinimize = () => {
+  //   setMiniMize(!miniMize);
+  // };
+
+  // Reset miniMize when activeWorkout becomes null (no active workout)
+  useEffect(() => {
+    if (activeWorkout) {
+      setMiniMize(true);
+      localStorage.setItem("miniMize", JSON.stringify(true));
+    }
+  }, [activeWorkout]);
+
+  const handleMinimize = () => {
+    setMiniMize((prev) => {
+      const next = !prev;
+      localStorage.setItem("miniMize", JSON.stringify(next));
+
+      // If we're expanding (next === false), we need to open the modal
+      if (!next && activeWorkout) {
+        // Open the modal by setting forceOpenWorkoutModal to true
+        setForceOpenWorkoutModal(true);
+        // Also open the start workout modal if needed
+        setStartWorkoutModalOpen(true);
+      }
+
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchActiveWorkout = async () => {
@@ -288,22 +326,24 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   >(null);
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //@ts-ignore
     let interval: NodeJS.Timer;
-    if (activeWorkout) {
+  
+    if (activeWorkout?.startedAt) {
       interval = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
+        const now = new Date().getTime();
+        const started = new Date(activeWorkout.startedAt).getTime();
+  
+        const seconds = Math.floor((now - started) / 1000);
+        setElapsedTime(seconds);
       }, 1000);
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsedTime(0);
     }
+  
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeWorkout]);
-
+  }, [activeWorkout?.startedAt]);
   const startWorkout = async (workout?: Workout) => {
     const { data: session, error } = await supabase
       .from("workout_sessions")
@@ -677,7 +717,6 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         updateSet,
         elapsedTime,
         resetWorkout,
-
         startWorkoutModalOpen,
         openStartWorkoutModal,
         closeStartWorkoutModal,
@@ -687,6 +726,10 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         resumeWorkout,
         forceOpenWorkoutModal,
         setForceOpenWorkoutModal,
+        handleMinimize,
+        setMiniMize,
+        miniMize,
+        setStartWorkoutModalOpen,
       }}
     >
       {children}

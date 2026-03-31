@@ -26,3 +26,19 @@ export const navItems = [
     label: "Stats",
   },
 ];
+
+export const formatTime = (seconds: number) => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}min ${secs.toString().padStart(2, "0")}s`;
+  }
+
+  if (mins > 0) {
+    return `${mins}min ${secs.toString().padStart(2, "0")}s`;
+  }
+
+  return `${secs}s`;
+};

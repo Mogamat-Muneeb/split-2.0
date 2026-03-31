@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type UserProfile = {
   id: string;
   email: string;
@@ -109,7 +110,7 @@ export interface Workout {
 
 export interface ActiveWorkout {
   id?: string;
-  workoutId?: string;
+  workoutId?: string | null;
   name: string;
   startedAt: Date;
   created_at: Date;

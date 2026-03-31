@@ -13,7 +13,7 @@ const Home = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [hoveredWorkout, setHoveredWorkout] = useState<string | null>(null);
-  const { openStartWorkoutModal, activeWorkout } = useLogWorkout();
+  const { openStartWorkoutModal, activeWorkout, setMiniMize } = useLogWorkout();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -153,14 +153,21 @@ const Home = () => {
             transition={{ type: "spring", stiffness: 300 }}
           >
             <div>
-              <h2 className="text-base font-bold">Empty Workout</h2>
-              <p className="text-sm">Build your session as you go</p>
+              <h2 className="text-base tracking-tight font-bold text-white dark:text-accent-foreground">
+                Empty Workout
+              </h2>
+              <p className="text-sm text-white dark:text-accent-foreground">
+                Build your session as you go
+              </p>
             </div>
             <motion.div
               onClick={() => {
                 openStartWorkoutModal();
+
+                setMiniMize(false);
+                localStorage.setItem("miniMize", JSON.stringify(false));
               }}
-              className="rounded-full p-3 w-fit bg-white"
+              className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground"
               whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
@@ -174,11 +181,13 @@ const Home = () => {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <div>
-                <h2 className="text-base font-bold">Manage Workout</h2>
+                <h2 className="text-base font-bold tracking-tight">
+                  Manage Workout
+                </h2>
                 <p className="text-sm">Edit your saved workouts</p>
               </div>
               <motion.div
-                className="rounded-2xl p-3 w-fit bg-white"
+                className="rounded-2xl p-3 w-fit dark:bg-white bg-accent-foreground"
                 whileHover={{ scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 400 }}
               >
@@ -194,7 +203,7 @@ const Home = () => {
 
       <div className="flex flex-col gap-5">
         <div className="flex w-full justify-between items-center">
-          <h2 className="font-bold">My workouts</h2>
+          <h2 className="font-bold tracking-tight">My workouts</h2>
           <p className="text-orange-600 text-sm">View all</p>
         </div>
 
@@ -270,12 +279,18 @@ const Home = () => {
                             onClick={async () => {
                               if (!activeWorkout) {
                                 // await handleStart(workout);
+
                                 openStartWorkoutModal(workout);
                               } else {
+                                setMiniMize(false);
+                                localStorage.setItem(
+                                  "miniMize",
+                                  JSON.stringify(false),
+                                );
                                 openStartWorkoutModal(workout);
                               }
                             }}
-                            className="rounded-full p-3 w-fit bg-white cursor-pointer"
+                            className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.2 }}
@@ -295,10 +310,15 @@ const Home = () => {
                                     // await handleStart(workout);
                                     openStartWorkoutModal(workout);
                                   } else {
+                                    setMiniMize(false);
+                                    localStorage.setItem(
+                                      "miniMize",
+                                      JSON.stringify(false),
+                                    );
                                     openStartWorkoutModal(workout);
                                   }
                                 }}
-                                className="rounded-full p-3 w-fit bg-white cursor-pointer"
+                                className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.8 }}

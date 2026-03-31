@@ -27,6 +27,8 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     resumeWorkout,
     setForceOpenWorkoutModal,
     forceOpenWorkoutModal,
+    handleMinimize,
+    setMiniMize,
   } = useLogWorkout();
 
   const handleStart = () => {
@@ -34,6 +36,15 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
       startWorkout();
     } else {
       startWorkout(workout);
+    }
+  };
+
+  const handleMinimizeAndClose = () => {
+    console.log("// Instead of toggling, we want to minimize (set to true)");
+    if (activeWorkout) {
+      setMiniMize(true);
+      localStorage.setItem("miniMize", JSON.stringify(true));
+      onClose(); // Close the modal
     }
   };
 
@@ -75,6 +86,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
           onClick={() => {
             onClose();
             setForceOpenWorkoutModal(false);
+            handleMinimizeAndClose();
           }}
           className="fixed inset-0 bg-black/20 z-40"
         />
@@ -83,12 +95,15 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl lg:px-0 px-2"
         >
-          <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4 max-w-4xl w-full">
+          <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-3   max-w-4xl w-full">
             <div className="max-h-[70vh] overflow-y-auto">
               <div className="flex justify-between items-center w-full  sticky top-0 z-40 bg-white dark:bg-[#2d2d2d]">
-                <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-2"
+                  onClick={handleMinimizeAndClose}
+                >
                   <ChevronDown size={16} />
                   <h2 className="text-sm">Log Workout</h2>
                 </div>
@@ -97,14 +112,14 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                     <WatchIcon />
                   </div>
                   <div>
-                    <Button onClick={handleFinish}>Finish</Button>
+                    <Button onClick={handleFinish} className="text-xs">Finish</Button>
                   </div>
                 </div>
               </div>
               <LoggingWorkout activeWorkout={activeWorkout} />
-              <div className="">
+              <div>
                 <Button
-                  variant="destructive"
+                  className="bg-red-700 text-white text-xs"
                   onClick={() => {
                     resetWorkout();
                     onClose();
@@ -129,6 +144,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
         onClick={() => {
           onClose();
           setForceOpenWorkoutModal(false);
+          handleMinimizeAndClose();
         }}
         className="fixed inset-0 bg-black/20 z-40"
       />
@@ -200,7 +216,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                       Cancel
                     </Button>
                     <Button
-                      variant="destructive"
+                      className="bg-red-700 text-white text-xs"
                       onClick={() => {
                         resetWorkout();
                         onClose();
@@ -222,12 +238,15 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl lg:px-0 px-2"
           >
-            <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-6 m-4 max-w-4xl w-full">
+            <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-3  max-w-4xl w-full">
               <div className="max-h-[70vh] overflow-y-auto">
                 <div className="flex justify-between items-center w-full  z-40  sticky top-0 bg-white dark:bg-[#2d2d2d]">
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center gap-2"
+                    onClick={handleMinimizeAndClose}
+                  >
                     <ChevronDown size={16} />
                     <h2 className="text-sm">Log Workout</h2>
                   </div>
@@ -236,14 +255,14 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                       <WatchIcon />
                     </div>
                     <div>
-                      <Button onClick={handleFinish}>Finish</Button>
+                      <Button onClick={handleFinish} className="text-xs">Finish</Button>
                     </div>
                   </div>
                 </div>
                 <LoggingWorkout activeWorkout={activeWorkout} />
                 <div className="">
                   <Button
-                    variant="destructive"
+                    className="bg-red-700 text-white text-xs"
                     onClick={() => {
                       resetWorkout();
                       onClose();
