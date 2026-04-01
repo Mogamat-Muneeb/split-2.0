@@ -54,7 +54,7 @@ const Dashboard = () => {
       {miniMize && activeWorkout && (
         <div className="fixed lg:bottom-1 bottom-[6%] left-1/2 -translate-x-1/2 -translate-y-1/2 lg:w-[20%] w-[93%]  rounded-4xl shadow-2xl bg-[#FAF6FA]  dark:bg-[#2d2d2d] p-3 z-50 flex flex-col items-start">
           <div className="flex justify-between w-full items-center">
-            <div className="w-full">
+            <div className="w-[100px] ">
               <button
                 onClick={handleExpandClick}
                 className="p-3 dark:bg-white bg-accent-foreground rounded-full"
@@ -63,24 +63,26 @@ const Dashboard = () => {
               </button>
             </div>
 
-            <div className="flex flex-col">
-              <h4 className="text-sm font-bold flex gap-2 items-center w-full pl-1">
-                <span className="flex justify-center flex-shrink-0">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+            <div className="flex flex-col w-full justify-center items-center">
+              <div>
+                <h4 className="text-sm font-bold flex gap-2 items-center w-full pl-1">
+                  <span className="flex justify-center flex-shrink-0">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                    </span>
                   </span>
-                </span>
-                <span className="flex-1 text-center">
-                  {activeWorkout.name.length > 10
-                    ? `${activeWorkout.name.slice(0, 10)}...`
-                    : activeWorkout.name}
-                </span>
-              </h4>
+                  <span className="flex-1 w-full text-center">
+                    {activeWorkout.name.length > 10
+                      ? `${activeWorkout.name.slice(0, 10)}...`
+                      : activeWorkout.name}
+                  </span>
+                </h4>
+              </div>
               <h2 className="text-xs w-[80px]">{formatTime(elapsedTime)}</h2>
             </div>
 
-            <div className="w-full flex justify-end">
+            <div className="flex justify-end w-[100px]">
               <button
                 className="p-3 dark:bg-white bg-accent-foreground rounded-full"
                 onClick={() => {
