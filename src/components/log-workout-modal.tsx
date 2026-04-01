@@ -104,7 +104,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     px-0 lg:px-0"
         >
           <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 shadow-xl p-3 max-w-4xl w-full">
-            <div className="lg:max-h-[70vh] max-h-screen overflow-y-auto">
+            <div className="lg:max-h-[70vh] lg:min-h-[70vh] max-h-screen min-h-screen overflow-y-auto">
               <div className="flex justify-between items-center w-full  sticky top-0 z-40 py-2 bg-white dark:bg-[#2d2d2d]">
                 <div
                   className="flex items-center gap-2"
