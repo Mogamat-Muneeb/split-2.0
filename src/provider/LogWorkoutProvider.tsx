@@ -55,7 +55,6 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   const [miniMize, setMiniMize] = useState<boolean>(() =>
     JSON.parse(localStorage.getItem("miniMize") || "false"),
   );
-  console.log("🚀 ~ LogWorkoutProvider ~ miniMize:", miniMize);
 
   // const handleMinimize = () => {
   //   setMiniMize(!miniMize);
@@ -327,23 +326,219 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let interval: NodeJS.Timer;
-  
+
     if (activeWorkout?.startedAt) {
       interval = setInterval(() => {
         const now = new Date().getTime();
         const started = new Date(activeWorkout.startedAt).getTime();
-  
+
         const seconds = Math.floor((now - started) / 1000);
         setElapsedTime(seconds);
       }, 1000);
     } else {
       setElapsedTime(0);
     }
-  
+
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [activeWorkout?.startedAt]);
+
+  // const startWorkout = async (workout?: Workout) => {
+  //   const { data: session, error } = await supabase
+  //     .from("workout_sessions")
+  //     .insert([
+  //       {
+  //         name: workout?.name || "New Workout",
+  //         status: "in_progress",
+  //         workout_id: workout?.id || null,
+  //       },
+  //     ])
+  //     .select()
+  //     .single();
+
+  //   if (error || !session) {
+  //     console.error("Error starting workout:", error);
+  //     return;
+  //   }
+
+  //   if (workout?.workout_exercises?.length) {
+  //     for (const ex of workout.workout_exercises) {
+  //       const { data: newExercise, error: exError } = await supabase
+  //         .from("workout_session_exercises")
+  //         .insert([
+  //           {
+  //             workout_session_id: session.id,
+  //             name: ex.name,
+  //             notes: ex.notes,
+  //             rest_timer:
+  //               typeof ex.rest_timer === "number" ? ex.rest_timer : null,
+  //             order_index:
+  //               typeof ex.order_index === "number" ? ex.order_index : 0,
+  //             exercise_image: ex.exercise_image || null,
+  //           },
+  //         ])
+  //         .select()
+  //         .single();
+
+  //       if (exError || !newExercise) {
+  //         console.error("Error inserting exercise:", exError);
+  //         continue;
+  //       }
+
+  //       if (ex.sets?.length) {
+  //         const setsToInsert = ex.sets.map((set) => ({
+  //           exercise_id: newExercise.id,
+  //           set_number: set.set_number,
+  //           reps: set.reps,
+  //           rep_range_min: set.rep_range_min,
+  //           rep_range_max: set.rep_range_max,
+  //           weight: set.weight,
+  //           checked: false,
+  //         }));
+
+  //         const { error: setError } = await supabase
+  //           .from("workout_sets")
+  //           .insert(setsToInsert);
+
+  //         if (setError) {
+  //           console.error("Error inserting sets:", setError);
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   const formattedExercises =
+  //     workout?.workout_exercises?.map((ex, index) => ({
+  //       id: `temp-${index}`,
+  //       name: ex.name,
+  //       notes: ex.notes,
+  //       rest_timer: ex.rest_timer,
+  //       exercise_image: ex.exercise_image || null,
+  //       order_index: ex.order_index || 0,
+  //       sets:
+  //         ex.sets?.map((set, setIndex) => ({
+  //           id: `temp-set-${index}-${setIndex}`,
+  //           set_number: set.set_number,
+  //           reps: set.reps,
+  //           rep_range_min: set.rep_range_min,
+  //           rep_range_max: set.rep_range_max,
+  //           weight: set.weight,
+  //           checked: false,
+  //         })) || [],
+  //     })) || [];
+
+  //   setActiveWorkout({
+  //     id: session.id,
+  //     name: session.name,
+  //     workoutId: workout?.id ?? null,
+  //     startedAt: new Date(session.started_at),
+  //     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  //     //@ts-ignore
+  //     exercises: formattedExercises,
+  //   });
+  // };
+
+
+  // const startWorkout = async (workout?: Workout) => {
+  //   const { data: session, error } = await supabase
+  //     .from("workout_sessions")
+  //     .insert([
+  //       {
+  //         name: workout?.name || "New Workout",
+  //         status: "in_progress",
+  //         workout_id: workout?.id || null,
+  //       },
+  //     ])
+  //     .select()
+  //     .single();
+  
+  //   if (error || !session) {
+  //     console.error("Error starting workout:", error);
+  //     return;
+  //   }
+  
+  //   const formattedExercises = [];
+  
+  //   if (workout?.workout_exercises?.length) {
+  //     for (const ex of workout.workout_exercises) {
+  //       const { data: newExercise, error: exError } = await supabase
+  //         .from("workout_session_exercises")
+  //         .insert([
+  //           {
+  //             workout_session_id: session.id,
+  //             name: ex.name,
+  //             notes: ex.notes,
+  //             rest_timer:
+  //               typeof ex.rest_timer === "number" ? ex.rest_timer : null,
+  //             order_index:
+  //               typeof ex.order_index === "number" ? ex.order_index : 0,
+  //             exercise_image: ex.exercise_image || null,
+  //           },
+  //         ])
+  //         .select()
+  //         .single();
+  
+  //       if (exError || !newExercise) {
+  //         console.error("Error inserting exercise:", exError);
+  //         continue;
+  //       }
+  
+  //       let insertedSets = [];
+        
+  //       if (ex.sets?.length) {
+  //         const setsToInsert = ex.sets.map((set, setIndex) => ({
+  //           exercise_id: newExercise.id,
+  //           set_number: set.set_number,
+  //           reps: set.reps,
+  //           rep_range_min: set.rep_range_min,
+  //           rep_range_max: set.rep_range_max,
+  //           weight: set.weight,
+  //           checked: false,
+  //         }));
+  
+  //         const { data: sets, error: setError } = await supabase
+  //           .from("workout_sets")
+  //           .insert(setsToInsert)
+  //           .select(); // Add .select() to get the inserted sets with their real UUIDs
+  
+  //         if (setError) {
+  //           console.error("Error inserting sets:", setError);
+  //         } else {
+  //           insertedSets = sets || [];
+  //         }
+  //       }
+  
+  //       formattedExercises.push({
+  //         id: newExercise.id, // Use the real UUID from the database
+  //         name: newExercise.name,
+  //         notes: newExercise.notes,
+  //         rest_timer: newExercise.rest_timer,
+  //         exercise_image: newExercise.exercise_image,
+  //         order_index: newExercise.order_index,
+  //         sets: insertedSets.map((set) => ({
+  //           id: set.id, // Use the real UUID from the database
+  //           set_number: set.set_number,
+  //           reps: set.reps,
+  //           rep_range_min: set.rep_range_min,
+  //           rep_range_max: set.rep_range_max,
+  //           weight: set.weight,
+  //           checked: set.checked,
+  //         })),
+  //       });
+  //     }
+  //   }
+  
+  //   setActiveWorkout({
+  //     id: session.id,
+  //     name: session.name,
+  //     workoutId: workout?.id ?? null,
+  //     startedAt: new Date(session.started_at),
+  //     exercises: formattedExercises,
+  //   });
+  // };
+
+
   const startWorkout = async (workout?: Workout) => {
     const { data: session, error } = await supabase
       .from("workout_sessions")
@@ -356,12 +551,14 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       ])
       .select()
       .single();
-
+  
     if (error || !session) {
       console.error("Error starting workout:", error);
       return;
     }
-
+  
+    const formattedExercises = [];
+  
     if (workout?.workout_exercises?.length) {
       for (const ex of workout.workout_exercises) {
         const { data: newExercise, error: exError } = await supabase
@@ -371,21 +568,21 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
               workout_session_id: session.id,
               name: ex.name,
               notes: ex.notes,
-              rest_timer:
-                typeof ex.rest_timer === "number" ? ex.rest_timer : null,
-              order_index:
-                typeof ex.order_index === "number" ? ex.order_index : 0,
+              rest_timer: ex.rest_timer, // ✅ Use the rest_timer from workout_exercises
+              order_index: ex.order_index || 0,
               exercise_image: ex.exercise_image || null,
             },
           ])
           .select()
           .single();
-
+  
         if (exError || !newExercise) {
           console.error("Error inserting exercise:", exError);
           continue;
         }
-
+  
+        let insertedSets = [];
+        
         if (ex.sets?.length) {
           const setsToInsert = ex.sets.map((set) => ({
             exercise_id: newExercise.id,
@@ -396,48 +593,48 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
             weight: set.weight,
             checked: false,
           }));
-
-          const { error: setError } = await supabase
+  
+          const { data: sets, error: setError } = await supabase
             .from("workout_sets")
-            .insert(setsToInsert);
-
+            .insert(setsToInsert)
+            .select();
+  
           if (setError) {
             console.error("Error inserting sets:", setError);
+          } else {
+            insertedSets = sets || [];
           }
         }
-      }
-    }
-
-    const formattedExercises =
-      workout?.workout_exercises?.map((ex, index) => ({
-        id: `temp-${index}`,
-        name: ex.name,
-        notes: ex.notes,
-        rest_timer: ex.rest_timer,
-        exercise_image: ex.exercise_image || null,
-        order_index: ex.order_index || 0,
-        sets:
-          ex.sets?.map((set, setIndex) => ({
-            id: `temp-set-${index}-${setIndex}`,
+  
+        formattedExercises.push({
+          id: newExercise.id,
+          name: newExercise.name,
+          notes: newExercise.notes,
+          rest_timer: newExercise.rest_timer, // This will now have the correct value
+          exercise_image: newExercise.exercise_image,
+          order_index: newExercise.order_index,
+          sets: insertedSets.map((set) => ({
+            id: set.id,
             set_number: set.set_number,
             reps: set.reps,
             rep_range_min: set.rep_range_min,
             rep_range_max: set.rep_range_max,
             weight: set.weight,
-            checked: false,
-          })) || [],
-      })) || [];
-
+            checked: set.checked,
+          })),
+        });
+      }
+    }
+  
     setActiveWorkout({
       id: session.id,
       name: session.name,
       workoutId: workout?.id ?? null,
       startedAt: new Date(session.started_at),
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      //@ts-ignore
       exercises: formattedExercises,
     });
   };
+
   const endWorkout = async () => {
     if (!activeWorkout?.id) return;
 

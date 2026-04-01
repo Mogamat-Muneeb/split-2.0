@@ -19,6 +19,8 @@ import {
 
 interface LoggingWorkoutProps {
   activeWorkout: ActiveWorkout | null;
+  resetWorkout: () => void;
+  onClose: () => void;
 }
 
 interface Exercise {
@@ -27,7 +29,11 @@ interface Exercise {
   jsonContents: any[];
 }
 
-const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
+const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
+  activeWorkout,
+  resetWorkout,
+  onClose,
+}) => {
   const { updateSet, addExercise, addSet, removeSet } = useLogWorkout();
   const [editingSet, setEditingSet] = useState<{
     exerciseId: string;
@@ -35,8 +41,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     field: "weight" | "reps";
     value: string;
   } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [restDuration, setRestDuration] = useState(0);
+
+  const prevCheckedRef = useRef<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +56,10 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   const [exerciseRepTypes, setExerciseRepTypes] = useState<{
     [exerciseId: string]: "reps" | "repRange";
   }>({});
+
+  const [isResting, setIsResting] = useState(false);
+  const [restTimeLeft, setRestTimeLeft] = useState(0);
+  const restIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -101,30 +114,99 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     }
   }, [editingSet]);
 
-  const formatRestTimer = (timer: string) => {
-    const value = parseInt(timer);
-    const unit = timer.replace(/[0-9]/g, "");
+  const parseRestTimerToSeconds = (
+    timer: string | number | null | undefined,
+  ): number => {
+    if (!timer) return 0;
 
-    if (unit === "s" || unit === "sec") {
-      return `${value}s`;
-    } else if (unit === "m" || unit === "min") {
-      return `${value}m`;
-    } else if (unit === "h" || unit === "hr") {
-      return `${value}h`;
+    const timerStr = String(timer); // ✅ force string
+
+    if (timerStr.includes(":")) {
+      const [min, sec] = timerStr.split(":").map(Number);
+      return min * 60 + sec;
     }
 
-    if (timer.includes(":")) {
-      const [minutes, seconds] = timer.split(":");
-      if (minutes === "0") {
-        return `${seconds}s`;
-      } else if (seconds === "00") {
-        return `${minutes}m`;
-      } else {
-        return `${minutes}m ${seconds}s`;
-      }
+    const value = parseInt(timerStr);
+    if (timerStr.includes("h")) return value * 3600;
+    if (timerStr.includes("m")) return value * 60;
+    if (timerStr.includes("s")) return value;
+
+    return value;
+  };
+
+  const startRestTimer = (seconds: number) => {
+    if (restIntervalRef.current) {
+      clearInterval(restIntervalRef.current);
     }
 
-    return timer;
+    setIsResting(true);
+    setRestTimeLeft(seconds);
+    setRestDuration(seconds); // ✅ ADD THIS
+
+    restIntervalRef.current = setInterval(() => {
+      setRestTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(restIntervalRef.current!);
+          setIsResting(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSetCheck = (
+    exerciseId: string,
+    setId: string,
+    currentlyChecked: boolean,
+    restTimer: string | number | null | undefined,
+  ) => {
+    const newCheckedState = !currentlyChecked;
+
+    updateSet(exerciseId, setId, { checked: newCheckedState });
+
+    if (newCheckedState && restTimer) {
+      const seconds = parseRestTimerToSeconds(restTimer);
+      startRestTimer(seconds);
+    }
+  };
+
+  const progress = restDuration
+    ? ((restDuration - restTimeLeft) / restDuration) * 100
+    : 0;
+
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const min = Math.floor((seconds % 3600) / 60);
+    const sec = seconds % 60;
+
+    const paddedHrs = String(hrs).padStart(2, "0");
+    const paddedMin = String(min).padStart(2, "0");
+    const paddedSec = String(sec).padStart(2, "0");
+
+    return hrs > 0
+      ? `${paddedHrs}:${paddedMin}:${paddedSec}`
+      : `${paddedMin}:${paddedSec}`;
+  };
+  const formatRestTimer = (timer: string | number | null | undefined) => {
+    if (!timer) return "";
+
+    const timerStr = String(timer);
+    const value = parseInt(timerStr);
+    const unit = timerStr.replace(/[0-9]/g, "");
+
+    if (unit === "s" || unit === "sec") return `${value}s`;
+    if (unit === "m" || unit === "min") return `${value}m`;
+    if (unit === "h" || unit === "hr") return `${value}h`;
+
+    if (timerStr.includes(":")) {
+      const [minutes, seconds] = timerStr.split(":");
+      if (minutes === "0") return `${seconds}s`;
+      if (seconds === "00") return `${minutes}m`;
+      return `${minutes}m ${seconds}s`;
+    }
+
+    return timerStr;
   };
 
   const handleAddExercise = (exercise: Exercise) => {
@@ -312,7 +394,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   return (
     <div className="">
       <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 py-4 lg:h-full h-fit">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 ">
           {shouldShowWorkoutDetails() && (
             <div className="flex-1 space-y-4 ">
               <div className="lg:max-h-110 max-h-[95vh] overflow-y-auto space-y-4 rounded-lg ">
@@ -539,9 +621,12 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                                 type="checkbox"
                                 checked={set.checked || false}
                                 onChange={() =>
-                                  updateSet(exercise.id, set.id, {
-                                    checked: !set.checked,
-                                  })
+                                  handleSetCheck(
+                                    exercise.id,
+                                    set.id,
+                                    set.checked || false,
+                                    exercise.rest_timer,
+                                  )
                                 }
                               />
                             </div>
@@ -561,15 +646,6 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
 
               {shouldShowWorkoutDetails() && (
                 <>
-                  <div className="lg:hidden flex w-full">
-                    <Button
-                      className="w-full"
-                      onClick={() => setShowLibrary(true)}
-                    >
-                      Add Exercise
-                    </Button>
-                  </div>
-
                   {activeWorkout?.exercises.length < 1 && (
                     <div className="lg:flex hidden w-full">
                       <div className="bg-accent rounded-xl px-3 py-4 w-full">
@@ -703,7 +779,61 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
             </div>
           )}
         </div>
+
+        <div className=" w-full flex gap-2 items-center left-0 right-0 py-3 ">
+          <div className="lg:hidden flex w-full ">
+            <Button className="w-full" onClick={() => setShowLibrary(true)}>
+              Add Exercise
+            </Button>
+          </div>
+          <div className="w-full  ">
+            <Button
+              className="bg-red-700 text-white w-full"
+              onClick={() => {
+                resetWorkout();
+                onClose();
+              }}
+            >
+              Discard Workout
+            </Button>
+          </div>
+        </div>
       </div>
+
+      {isResting ? (
+        <>
+          <div className="fixed flex w-full bg-background bottom-0 left-0 rounded-t-lg px-2 py-4 gap-2 items-center">
+            {/* Top border progress */}
+            <div className="absolute top-0 left-0 w-full h-1 rounded-t-lg overflow-hidden">
+              <div
+                className="h-full bg-white transition-all duration-1000"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <div className="w-full">
+              <Button className="border-0" variant="outline">
+                -15
+              </Button>
+            </div>
+
+            <div className="w-full">
+              <p className="text-white font-semibold">
+                {formatTime(restTimeLeft)}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 w-full">
+              <Button className="border-0" variant="outline">
+                +15
+              </Button>
+              <Button className="border-0">Skip</Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <></>
+      )}
     </div>
   );
 };

@@ -95,11 +95,17 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-5xl lg:px-0 px-2"
+          className=" fixed z-50
+    top-0 left-0 w-full h-full   /* mobile full screen */
+    lg:top-1/2 lg:left-1/2       /* desktop center */
+    lg:-translate-x-1/2 lg:-translate-y-1/2
+    lg:h-auto
+    lg:max-w-5xl
+    px-0 lg:px-0"
         >
-          <div className="bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-xl p-3   max-w-4xl w-full">
-            <div className="max-h-[70vh] overflow-y-auto">
-              <div className="flex justify-between items-center w-full  sticky top-0 z-40 bg-white dark:bg-[#2d2d2d]">
+          <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 shadow-xl p-3 max-w-4xl w-full">
+            <div className="lg:max-h-[70vh] max-h-screen overflow-y-auto">
+              <div className="flex justify-between items-center w-full  sticky top-0 z-40 py-2 bg-white dark:bg-[#2d2d2d]">
                 <div
                   className="flex items-center gap-2"
                   onClick={handleMinimizeAndClose}
@@ -118,18 +124,11 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                   </div>
                 </div>
               </div>
-              <LoggingWorkout activeWorkout={activeWorkout} />
-              <div className="w-full flex justify-end">
-                <Button
-                  className="bg-red-700 text-white "
-                  onClick={() => {
-                    resetWorkout();
-                    onClose();
-                  }}
-                >
-                  Discard Workout
-                </Button>
-              </div>
+              <LoggingWorkout
+                activeWorkout={activeWorkout}
+                resetWorkout={resetWorkout}
+                onClose={onClose}
+              />
             </div>
           </div>
         </motion.div>
@@ -265,18 +264,11 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
                     </div>
                   </div>
                 </div>
-                <LoggingWorkout activeWorkout={activeWorkout} />
-                <div className="w-full flex justify-end">
-                  <Button
-                    className="bg-red-700 text-white "
-                    onClick={() => {
-                      resetWorkout();
-                      onClose();
-                    }}
-                  >
-                    Discard Workout
-                  </Button>
-                </div>
+                <LoggingWorkout
+                  activeWorkout={activeWorkout}
+                  resetWorkout={resetWorkout}
+                  onClose={onClose}
+                />
               </div>
             </div>
           </motion.div>
