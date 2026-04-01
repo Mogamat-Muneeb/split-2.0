@@ -34,7 +34,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
   resetWorkout,
   onClose,
 }) => {
-  const { updateSet, addExercise, addSet, removeSet } = useLogWorkout();
+  const { updateSet, addExercise, addSet, removeSet, updateExercise } = useLogWorkout();
   const [editingSet, setEditingSet] = useState<{
     exerciseId: string;
     setId: string;
@@ -45,7 +45,6 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [restDuration, setRestDuration] = useState(0);
 
-  const prevCheckedRef = useRef<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +59,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
   const [isResting, setIsResting] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState(0);
   const restIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [pendingSetCheck, setPendingSetCheck] = useState<{
+    exerciseId: string;
+    setId: string;
+    restTimer: string | number | null | undefined;
+  } | null>(null);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -114,12 +118,21 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
     }
   }, [editingSet]);
 
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (restIntervalRef.current) {
+        clearInterval(restIntervalRef.current);
+      }
+    };
+  }, []);
+
   const parseRestTimerToSeconds = (
     timer: string | number | null | undefined,
   ): number => {
-    if (!timer) return 0;
+    if (!timer || timer === "off") return 0;
 
-    const timerStr = String(timer); // ✅ force string
+    const timerStr = String(timer);
 
     if (timerStr.includes(":")) {
       const [min, sec] = timerStr.split(":").map(Number);
@@ -135,19 +148,34 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
   };
 
   const startRestTimer = (seconds: number) => {
+    // Clear any existing timer
     if (restIntervalRef.current) {
       clearInterval(restIntervalRef.current);
+      restIntervalRef.current = null;
     }
 
     setIsResting(true);
     setRestTimeLeft(seconds);
-    setRestDuration(seconds); // ✅ ADD THIS
+    setRestDuration(seconds);
 
     restIntervalRef.current = setInterval(() => {
       setRestTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(restIntervalRef.current!);
+          // Timer finished
+          if (restIntervalRef.current) {
+            clearInterval(restIntervalRef.current);
+            restIntervalRef.current = null;
+          }
           setIsResting(false);
+          
+          // Process any pending set check that was waiting for timer to finish
+          if (pendingSetCheck) {
+            updateSet(pendingSetCheck.exerciseId, pendingSetCheck.setId, { 
+              checked: true 
+            });
+            setPendingSetCheck(null);
+          }
+          
           return 0;
         }
         return prev - 1;
@@ -162,12 +190,70 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
     restTimer: string | number | null | undefined,
   ) => {
     const newCheckedState = !currentlyChecked;
+    
+    // If we're unchecking a set, just update it directly
+    if (!newCheckedState) {
+      updateSet(exerciseId, setId, { checked: false });
+      return;
+    }
 
-    updateSet(exerciseId, setId, { checked: newCheckedState });
-
-    if (newCheckedState && restTimer) {
+    // If we're checking a set and there's a rest timer
+    if (newCheckedState && restTimer && restTimer !== "off") {
       const seconds = parseRestTimerToSeconds(restTimer);
-      startRestTimer(seconds);
+      
+      // If timer is already running, store this set check to process when timer finishes
+      if (isResting) {
+        setPendingSetCheck({ exerciseId, setId, restTimer });
+        // Optionally show a toast or notification that the set will be marked after timer
+        console.log("Timer active, set will be marked when timer completes");
+      } else {
+        // No timer running, start new timer and mark set as checked
+        startRestTimer(seconds);
+        updateSet(exerciseId, setId, { checked: true });
+      }
+    } else {
+      // No rest timer, just mark as checked
+      updateSet(exerciseId, setId, { checked: true });
+    }
+  };
+
+  const handleAdjustTime = (seconds: number) => {
+    if (!isResting) return;
+    
+    const newTime = Math.max(0, restTimeLeft + seconds);
+    setRestTimeLeft(newTime);
+    
+    // If we're going below 0, finish the timer
+    if (newTime <= 0) {
+      if (restIntervalRef.current) {
+        clearInterval(restIntervalRef.current);
+        restIntervalRef.current = null;
+      }
+      setIsResting(false);
+      
+      // Process pending set check
+      if (pendingSetCheck) {
+        updateSet(pendingSetCheck.exerciseId, pendingSetCheck.setId, { 
+          checked: true 
+        });
+        setPendingSetCheck(null);
+      }
+    }
+  };
+
+  const handleSkipTimer = () => {
+    if (restIntervalRef.current) {
+      clearInterval(restIntervalRef.current);
+      restIntervalRef.current = null;
+    }
+    setIsResting(false);
+    
+    // Process pending set check
+    if (pendingSetCheck) {
+      updateSet(pendingSetCheck.exerciseId, pendingSetCheck.setId, { 
+        checked: true 
+      });
+      setPendingSetCheck(null);
     }
   };
 
@@ -188,8 +274,9 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
       ? `${paddedHrs}:${paddedMin}:${paddedSec}`
       : `${paddedMin}:${paddedSec}`;
   };
+  
   const formatRestTimer = (timer: string | number | null | undefined) => {
-    if (!timer) return "";
+    if (!timer || timer === "off") return "Off";
 
     const timerStr = String(timer);
     const value = parseInt(timerStr);
@@ -338,6 +425,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
     }
   };
 
+  const handleRestTimerChange = (exerciseId: string, value: string) => {
+    // Update the exercise's rest timer
+    updateExercise(exerciseId, { rest_timer: value });
+  };
+
   const filteredExercises = exercises.filter((exercise) => {
     const searchLower = searchTerm.toLowerCase();
     const exerciseContent = exercise.jsonContents?.[0]?.content;
@@ -416,21 +508,40 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
                         )}
                         <h3 className="font-medium my-4">{exercise.name}</h3>
                       </div>
-                      <div className="flex flex-col gap-2 mb-10">
+                      
+                      <div className="flex flex-col gap-2 mb-4">
                         {exercise.notes && (
-                          <p className="mt-2 text-sm">{exercise.notes}</p>
+                          <p className="text-sm">{exercise.notes}</p>
                         )}
-                        {exercise.rest_timer && (
-                          <p className="text-sm">
-                            <span className="text-orange-600">
-                              Rest Timer:{" "}
-                            </span>
-                            <span className="lowercase">
-                              {formatRestTimer(exercise.rest_timer)}
-                            </span>
-                          </p>
-                        )}
+                        
+                        {/* Rest Timer Selector */}
+                        <div className="w-full">
+                          <h2 className="text-sm font-medium mb-2">Rest Timer</h2>
+                          <Select
+                            value={exercise.rest_timer?.toString() || "off"}
+                            onValueChange={(value) =>
+                              handleRestTimerChange(exercise.id, value)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select a timer" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>Rest Timer</SelectLabel>
+                                <SelectItem value="off">Off</SelectItem>
+                                <SelectItem value="30">00:30</SelectItem>
+                                <SelectItem value="60">01:00</SelectItem>
+                                <SelectItem value="90">01:30</SelectItem>
+                                <SelectItem value="120">02:00</SelectItem>
+                                <SelectItem value="150">02:30</SelectItem>
+                                <SelectItem value="300">05:00</SelectItem>
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
+
                       <div className="">
                         <div
                           className={`grid ${
@@ -800,39 +911,50 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
         </div>
       </div>
 
-      {isResting ? (
-        <>
-          <div className="fixed flex w-full bg-background bottom-0 left-0 rounded-t-lg px-2 py-4 gap-2 items-center">
-            {/* Top border progress */}
-            <div className="absolute top-0 left-0 w-full h-1 rounded-t-lg overflow-hidden">
-              <div
-                className="h-full bg-white transition-all duration-1000"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
-            <div className="w-full">
-              <Button className="border-0" variant="outline">
-                -15
-              </Button>
-            </div>
-
-            <div className="w-full">
-              <p className="text-white font-semibold">
-                {formatTime(restTimeLeft)}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 w-full">
-              <Button className="border-0" variant="outline">
-                +15
-              </Button>
-              <Button className="border-0">Skip</Button>
-            </div>
+      {/* Rest Timer Overlay */}
+      {isResting && (
+        <div className="fixed flex w-full bg-background bottom-0 left-0 rounded-t-lg px-2 py-4 gap-2 items-center shadow-lg border-t border-orange-600/20">
+          {/* Top border progress */}
+          <div className="absolute top-0 left-0 w-full h-1 rounded-t-lg overflow-hidden">
+            <div
+              className="h-full bg-orange-600 transition-all duration-1000 ease-linear"
+              style={{ width: `${progress}%` }}
+            />
           </div>
-        </>
-      ) : (
-        <></>
+
+          <div className="w-full">
+            <Button 
+              className="border-orange-600/30 hover:bg-orange-600/10" 
+              variant="outline"
+              onClick={() => handleAdjustTime(-15)}
+              disabled={restTimeLeft <= 0}
+            >
+              -15
+            </Button>
+          </div>
+
+          <div className="w-full text-center">
+            <p className="text-white font-mono text-xl font-semibold">
+              {formatTime(restTimeLeft)}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 w-full">
+            <Button 
+              className="border-orange-600/30 hover:bg-orange-600/10" 
+              variant="outline"
+              onClick={() => handleAdjustTime(15)}
+            >
+              +15
+            </Button>
+            <Button 
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={handleSkipTimer}
+            >
+              Skip
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

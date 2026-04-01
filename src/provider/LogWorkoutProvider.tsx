@@ -16,6 +16,7 @@ interface LogWorkoutContextType {
   addExercise: (exercise: WorkoutExercise) => void;
   updateSet: (exerciseId: string, setId: string, data: Partial<Set>) => void;
   elapsedTime: number;
+  updateExercise: (exerciseId: string, data: Partial<any>) => void;
   resetWorkout: () => void;
   startWorkoutModalOpen: boolean;
   openStartWorkoutModal: (workout?: Workout | ActiveWorkout) => void;
@@ -439,7 +440,6 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //   });
   // };
 
-
   // const startWorkout = async (workout?: Workout) => {
   //   const { data: session, error } = await supabase
   //     .from("workout_sessions")
@@ -452,14 +452,14 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //     ])
   //     .select()
   //     .single();
-  
+
   //   if (error || !session) {
   //     console.error("Error starting workout:", error);
   //     return;
   //   }
-  
+
   //   const formattedExercises = [];
-  
+
   //   if (workout?.workout_exercises?.length) {
   //     for (const ex of workout.workout_exercises) {
   //       const { data: newExercise, error: exError } = await supabase
@@ -478,14 +478,14 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //         ])
   //         .select()
   //         .single();
-  
+
   //       if (exError || !newExercise) {
   //         console.error("Error inserting exercise:", exError);
   //         continue;
   //       }
-  
+
   //       let insertedSets = [];
-        
+
   //       if (ex.sets?.length) {
   //         const setsToInsert = ex.sets.map((set, setIndex) => ({
   //           exercise_id: newExercise.id,
@@ -496,19 +496,19 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //           weight: set.weight,
   //           checked: false,
   //         }));
-  
+
   //         const { data: sets, error: setError } = await supabase
   //           .from("workout_sets")
   //           .insert(setsToInsert)
   //           .select(); // Add .select() to get the inserted sets with their real UUIDs
-  
+
   //         if (setError) {
   //           console.error("Error inserting sets:", setError);
   //         } else {
   //           insertedSets = sets || [];
   //         }
   //       }
-  
+
   //       formattedExercises.push({
   //         id: newExercise.id, // Use the real UUID from the database
   //         name: newExercise.name,
@@ -528,7 +528,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //       });
   //     }
   //   }
-  
+
   //   setActiveWorkout({
   //     id: session.id,
   //     name: session.name,
@@ -537,7 +537,6 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   //     exercises: formattedExercises,
   //   });
   // };
-
 
   const startWorkout = async (workout?: Workout) => {
     const { data: session, error } = await supabase
@@ -551,14 +550,14 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       ])
       .select()
       .single();
-  
+
     if (error || !session) {
       console.error("Error starting workout:", error);
       return;
     }
-  
+
     const formattedExercises = [];
-  
+
     if (workout?.workout_exercises?.length) {
       for (const ex of workout.workout_exercises) {
         const { data: newExercise, error: exError } = await supabase
@@ -575,14 +574,14 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           ])
           .select()
           .single();
-  
+
         if (exError || !newExercise) {
           console.error("Error inserting exercise:", exError);
           continue;
         }
-  
+
         let insertedSets = [];
-        
+
         if (ex.sets?.length) {
           const setsToInsert = ex.sets.map((set) => ({
             exercise_id: newExercise.id,
@@ -593,19 +592,19 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
             weight: set.weight,
             checked: false,
           }));
-  
+
           const { data: sets, error: setError } = await supabase
             .from("workout_sets")
             .insert(setsToInsert)
             .select();
-  
+
           if (setError) {
             console.error("Error inserting sets:", setError);
           } else {
             insertedSets = sets || [];
           }
         }
-  
+
         formattedExercises.push({
           id: newExercise.id,
           name: newExercise.name,
@@ -625,7 +624,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         });
       }
     }
-  
+
     setActiveWorkout({
       id: session.id,
       name: session.name,
@@ -904,6 +903,36 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     setSelectedWorkout(activeWorkout);
   };
 
+  const updateExercise = async (exerciseId: string, data: Partial<any>) => {
+    if (!activeWorkout) return;
+
+    // Update locally first
+    setActiveWorkout((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) =>
+          ex.id === exerciseId
+            ? {
+                ...ex,
+                ...data,
+              }
+            : ex,
+        ),
+      };
+    });
+
+    // Update in database
+    const { error } = await supabase
+      .from("workout_session_exercises")
+      .update(data)
+      .eq("id", exerciseId);
+
+    if (error) {
+      console.error("Error updating exercise:", error);
+    }
+  };
+
   return (
     <LogWorkoutContext.Provider
       value={{
@@ -927,6 +956,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         setMiniMize,
         miniMize,
         setStartWorkoutModalOpen,
+        updateExercise,
       }}
     >
       {children}
