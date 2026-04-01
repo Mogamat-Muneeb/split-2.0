@@ -289,240 +289,300 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     return showLibrary;
   };
 
+  const getExerciseCategory = (exerciseName: string) => {
+    const match = exercises.find(
+      (ex) =>
+        ex.jsonContents?.[0]?.content?.name?.toLowerCase().trim() ===
+        exerciseName.toLowerCase().trim(),
+    );
+
+    return match?.jsonContents?.[0]?.content?.category?.toLowerCase() || "";
+  };
+
+  const WEIGHT_CATEGORIES = [
+    "strength",
+    "powerlifting",
+    "olympic weightlifting",
+    "strongman",
+  ];
+
+  const shouldShowWeight = (category: string) =>
+    WEIGHT_CATEGORIES.includes(category);
+
   return (
     <div className="">
       <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 py-4 lg:h-full h-fit">
         <div className="flex flex-col md:flex-row gap-4">
           {shouldShowWorkoutDetails() && (
             <div className="flex-1 space-y-4 ">
-              <div className="lg:max-h-98 max-h-[95vh] overflow-y-auto space-y-4 ">
-                {activeWorkout?.exercises?.map((exercise) => (
-                  <div
-                    key={exercise.id}
-                    className="bg-accent rounded-lg p-4 w-full"
-                  >
-                    <div className="flex gap-2 items-center">
-                      {exercise.exercise_image && (
-                        <img
-                          src={exercise.exercise_image}
-                          alt={exercise.name}
-                          className="w-10 h-10 rounded-full object-cover grayscale-100"
-                        />
-                      )}
-                      <h3 className="font-medium my-4">{exercise.name}</h3>
-                    </div>
-                    <div className="flex flex-col gap-2 mb-10">
-                      {exercise.notes && (
-                        <p className="mt-2 text-sm">{exercise.notes}</p>
-                      )}
-                      {exercise.rest_timer && (
-                        <p className="text-sm">
-                          <span className="text-orange-600">Rest Timer: </span>
-                          <span className="lowercase">
-                            {formatRestTimer(exercise.rest_timer)}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                    <div className="">
-                      <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] px-2 items-center w-full mb-4 gap-2 text-xs tracking-tight">
-                        <div className="w-fit">SET</div>
-                        <div className="flex items-center justify-center w-full">
-                          PREV
-                        </div>
-                        <div className="flex items-center justify-center w-full">
-                          KG
-                        </div>
-                        <div className="flex flex-col items-center justify-center w-full">
-                          <Select
-                            value={exerciseRepTypes[exercise.id] || "reps"}
-                            onValueChange={(value: "reps" | "repRange") =>
-                              handleRepTypeChange(exercise.id, value)
-                            }
-                          >
-                            <SelectTrigger
-                              size="sm"
-                              className="border-0 w-auto p-1 !bg-transparent"
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Rep type</SelectLabel>
-                                <SelectItem value="reps">Reps</SelectItem>
-                                <SelectItem value="repRange">
-                                  Rep Range
-                                </SelectItem>
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center justify-center w-full">
-                          DONE
-                        </div>
+              <div className="lg:max-h-110 max-h-[95vh] overflow-y-auto space-y-4 rounded-lg ">
+                {activeWorkout?.exercises?.map((exercise) => {
+                  const category = getExerciseCategory(exercise.name);
+                  const showWeight = shouldShowWeight(category);
+                  return (
+                    <div
+                      key={exercise.id}
+                      className="bg-accent rounded-lg p-4 w-full"
+                    >
+                      <div className="flex gap-2 items-center">
+                        {exercise.exercise_image && (
+                          <img
+                            src={exercise.exercise_image}
+                            alt={exercise.name}
+                            className="w-10 h-10 rounded-full object-cover grayscale-100"
+                          />
+                        )}
+                        <h3 className="font-medium my-4">{exercise.name}</h3>
                       </div>
-                      {exercise?.sets?.map((set, setIndex) => (
+                      <div className="flex flex-col gap-2 mb-10">
+                        {exercise.notes && (
+                          <p className="mt-2 text-sm">{exercise.notes}</p>
+                        )}
+                        {exercise.rest_timer && (
+                          <p className="text-sm">
+                            <span className="text-orange-600">
+                              Rest Timer:{" "}
+                            </span>
+                            <span className="lowercase">
+                              {formatRestTimer(exercise.rest_timer)}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      <div className="">
                         <div
-                          key={set.id}
-                          className={`grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 items-center text-sm p-4 group
-                            ${
-                              set.checked
-                                ? "bg-orange-700/30 "
-                                : setIndex % 2 === 1
-                                  ? ""
-                                  : "bg-background"
-                            }
-                          `}
+                          className={`grid ${
+                            showWeight
+                              ? "grid-cols-[auto_1fr_1fr_1fr_1fr]"
+                              : "grid-cols-[auto_1fr_1fr_1fr]"
+                          } px-2 items-center w-full mb-4 gap-2 text-xs tracking-tight`}
                         >
-                          <div className=" w-fit">{set.set_number}</div>
+                          <div className="w-fit">SET</div>
                           <div className="flex items-center justify-center w-full">
-                            -
+                            PREV
                           </div>
-                          {/* Editable Weight */}
-                          <div className="flex items-center justify-center w-full">
-                            {editingSet?.exerciseId === exercise.id &&
-                            editingSet?.setId === set.id &&
-                            editingSet?.field === "weight" ? (
-                              <Input
-                                ref={inputRef}
-                                type="number"
-                                value={editingSet.value}
-                                onChange={(e) =>
-                                  setEditingSet({
-                                    ...editingSet,
-                                    value: e.target.value,
-                                  })
-                                }
-                                onKeyDown={(e) =>
-                                  handleKeyPress(
-                                    e,
-                                    exercise.id,
-                                    set.id,
-                                    "weight",
-                                  )
-                                }
-                                onBlur={handleBlur}
-                              />
-                            ) : (
-                              <div
-                                onClick={() =>
-                                  startEditing(
-                                    exercise.id,
-                                    set.id,
-                                    "weight",
-                                    set.weight,
-                                  )
-                                }
-                                className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-xs"
-                              >
-                                <span>{set.weight}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-center w-full">
-                            {editingSet?.exerciseId === exercise.id &&
-                            editingSet?.setId === set.id &&
-                            editingSet?.field === "reps" ? (
-                              <Input
-                                ref={inputRef}
-                                type="number"
-                                value={editingSet.value}
-                                onChange={(e) =>
-                                  setEditingSet({
-                                    ...editingSet,
-                                    value: e.target.value,
-                                  })
-                                }
-                                onKeyDown={(e) =>
-                                  handleKeyPress(e, exercise.id, set.id, "reps")
-                                }
-                                onBlur={handleBlur}
-                              />
-                            ) : exerciseRepTypes[exercise.id] === "reps" ? (
-                              <div
-                                onClick={() => {
-                                  startEditing(
-                                    exercise.id,
-                                    set.id,
-                                    "reps",
-                                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                                    //@ts-ignore
-                                    set.reps !== null ? set.reps : null,
-                                  );
-                                }}
-                                className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm cursor-pointer  text-xs"
-                              >
-                                <span>
-                                  {set.reps !== null ? `${set.reps}` : "0"}
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="flex gap-1 items-center">
-                                <Input
-                                  type="number"
-                                  placeholder="Min"
-                                  value={set.rep_range_min ?? 8}
-                                  onChange={(e) => {
-                                    const newMin =
-                                      parseInt(e.target.value) || 0;
-                                    updateSet(exercise.id, set.id, {
-                                      rep_range_min: newMin,
-                                    });
-                                  }}
-                                  className="text-center p-0"
-                                />
-                                <span>-</span>
-                                <Input
-                                  type="number"
-                                  placeholder="Max"
-                                  value={set.rep_range_max ?? 12}
-                                  onChange={(e) => {
-                                    const newMax =
-                                      parseInt(e.target.value) || 0;
-                                    updateSet(exercise.id, set.id, {
-                                      rep_range_max: newMax,
-                                    });
-                                  }}
-                                  className="text-center p-0"
-                                />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-center w-full">
-                            <input
-                              className="accent-orange-700"
-                              type="checkbox"
-                              checked={set.checked || false}
-                              onChange={() =>
-                                updateSet(exercise.id, set.id, {
-                                  checked: !set.checked,
-                                })
+                          {showWeight && (
+                            <div className="flex items-center justify-center w-full">
+                              KG
+                            </div>
+                          )}
+                          <div className="flex flex-col items-center justify-center w-full">
+                            <Select
+                              value={exerciseRepTypes[exercise.id] || "reps"}
+                              onValueChange={(value: "reps" | "repRange") =>
+                                handleRepTypeChange(exercise.id, value)
                               }
-                            />
+                            >
+                              <SelectTrigger
+                                size="sm"
+                                className="border-0 w-auto p-1 !bg-transparent"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>Rep type</SelectLabel>
+                                  <SelectItem value="reps">Reps</SelectItem>
+                                  <SelectItem value="repRange">
+                                    Rep Range
+                                  </SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center justify-center w-full">
+                            DONE
                           </div>
                         </div>
-                      ))}
-                      <Button
-                        onClick={() => handleAddSet(exercise.id)}
-                        className="w-full mt-3"
-                      >
-                        Add set
-                      </Button>
+                        {exercise?.sets?.map((set, setIndex) => (
+                          <div
+                            key={set.id}
+                            className={`grid ${
+                              showWeight
+                                ? "grid-cols-[auto_1fr_1fr_1fr_1fr]"
+                                : "grid-cols-[auto_1fr_1fr_1fr]"
+                            } gap-2 items-center text-sm p-4 group
+                              ${
+                                set.checked
+                                  ? "bg-orange-700/30 "
+                                  : setIndex % 2 === 1
+                                    ? ""
+                                    : "bg-background"
+                              }
+                            `}
+                          >
+                            <div className=" w-fit">{set.set_number}</div>
+                            <div className="flex items-center justify-center w-full">
+                              -
+                            </div>
+                            {/* Editable Weight */}
+                            {showWeight && (
+                              <div className="flex items-center justify-center w-full">
+                                {editingSet?.exerciseId === exercise.id &&
+                                editingSet?.setId === set.id &&
+                                editingSet?.field === "weight" ? (
+                                  <Input
+                                    ref={inputRef}
+                                    type="number"
+                                    value={editingSet.value}
+                                    onChange={(e) =>
+                                      setEditingSet({
+                                        ...editingSet,
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    onKeyDown={(e) =>
+                                      handleKeyPress(
+                                        e,
+                                        exercise.id,
+                                        set.id,
+                                        "weight",
+                                      )
+                                    }
+                                    onBlur={handleBlur}
+                                  />
+                                ) : (
+                                  <div
+                                    onClick={() =>
+                                      startEditing(
+                                        exercise.id,
+                                        set.id,
+                                        "weight",
+                                        set.weight,
+                                      )
+                                    }
+                                    className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-xs"
+                                  >
+                                    <span>{set.weight}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-center w-full">
+                              {editingSet?.exerciseId === exercise.id &&
+                              editingSet?.setId === set.id &&
+                              editingSet?.field === "reps" ? (
+                                <Input
+                                  ref={inputRef}
+                                  type="number"
+                                  value={editingSet.value}
+                                  onChange={(e) =>
+                                    setEditingSet({
+                                      ...editingSet,
+                                      value: e.target.value,
+                                    })
+                                  }
+                                  onKeyDown={(e) =>
+                                    handleKeyPress(
+                                      e,
+                                      exercise.id,
+                                      set.id,
+                                      "reps",
+                                    )
+                                  }
+                                  onBlur={handleBlur}
+                                />
+                              ) : exerciseRepTypes[exercise.id] === "reps" ? (
+                                <div
+                                  onClick={() => {
+                                    startEditing(
+                                      exercise.id,
+                                      set.id,
+                                      "reps",
+                                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                                      //@ts-ignore
+                                      set.reps !== null ? set.reps : null,
+                                    );
+                                  }}
+                                  className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm cursor-pointer  text-xs"
+                                >
+                                  <span>
+                                    {set.reps !== null ? `${set.reps}` : "0"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1 items-center">
+                                  <Input
+                                    type="number"
+                                    placeholder="Min"
+                                    value={set.rep_range_min ?? 8}
+                                    onChange={(e) => {
+                                      const newMin =
+                                        parseInt(e.target.value) || 0;
+                                      updateSet(exercise.id, set.id, {
+                                        rep_range_min: newMin,
+                                      });
+                                    }}
+                                    className="text-center p-0"
+                                  />
+                                  <span>-</span>
+                                  <Input
+                                    type="number"
+                                    placeholder="Max"
+                                    value={set.rep_range_max ?? 12}
+                                    onChange={(e) => {
+                                      const newMax =
+                                        parseInt(e.target.value) || 0;
+                                      updateSet(exercise.id, set.id, {
+                                        rep_range_max: newMax,
+                                      });
+                                    }}
+                                    className="text-center p-0"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-center w-full">
+                              <input
+                                className="accent-orange-700"
+                                type="checkbox"
+                                checked={set.checked || false}
+                                onChange={() =>
+                                  updateSet(exercise.id, set.id, {
+                                    checked: !set.checked,
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => handleAddSet(exercise.id)}
+                          className="w-full mt-3"
+                        >
+                          Add set
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {shouldShowWorkoutDetails() && (
-                <div className="flex w-full">
-                  <Button
-                    className="w-full"
-                    onClick={() => setShowLibrary(true)}
-                  >
-                    Add Exercise
-                  </Button>
-                </div>
+                <>
+                  <div className="lg:hidden flex w-full">
+                    <Button
+                      className="w-full"
+                      onClick={() => setShowLibrary(true)}
+                    >
+                      Add Exercise
+                    </Button>
+                  </div>
+
+                  {activeWorkout?.exercises.length < 1 && (
+                    <div className="lg:flex hidden w-full">
+                      <div className="bg-accent rounded-xl px-3 py-4 w-full">
+                        <p className="font-bold text-base tracking-tight">
+                          No exercises added yet
+                        </p>
+                        <p className="text-sm">
+                          Click on exercises from the right panel to add them
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

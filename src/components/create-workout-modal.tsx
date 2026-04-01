@@ -43,9 +43,9 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const [workoutName, setWorkoutName] = useState("");
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[] | any[]>(
-    [],
-  );
+  const [workoutExercises, setWorkoutExercises] = useState<
+    WorkoutExercise[] | any[]
+  >([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingWorkout, setIsLoadingWorkout] = useState(false);
 
@@ -76,6 +76,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         .eq("id", workout.id)
         .single();
 
+      console.log("🔴", data);
+
       if (error) throw error;
 
       if (data) {
@@ -83,7 +85,13 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
           exercise: {
             folder: we.exercise_id,
             images: we.exercise_image ? [we.exercise_image] : [],
-            jsonContents: [],
+            jsonContents: [
+              {
+                content: {
+                  category: we.category,
+                },
+              },
+            ],
           },
           notes: we.notes || "",
           restTimer: we.rest_timer || "off",
@@ -264,7 +272,12 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
     setWorkoutExercises(
       workoutExercises.map((we) =>
         we.exercise.folder === folder
-          ? { ...we, sets: we.sets.filter((_: any, index: number) => index !== setIndex) }
+          ? {
+              ...we,
+              sets: we.sets.filter(
+                (_: any, index: number) => index !== setIndex,
+              ),
+            }
           : we,
       ),
     );
@@ -404,6 +417,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   const insertExercisesAndSets = async (workoutId: string, _userId: string) => {
     // Insert workout exercises
     const exercisesPayload = workoutExercises.map((we, index) => {
+      const category = we.exercise.jsonContents?.[0]?.content?.category || "";
+
       return {
         workout_id: workoutId,
         exercise_id: we.exercise.folder,
@@ -414,6 +429,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         rest_timer: we.restTimer,
         position: index,
         exercise_image: we.exercise.images?.[0] || null,
+        category,
       };
     });
 
@@ -431,14 +447,25 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
 
       if (!original) return [];
 
-      return original.sets.map((set: { weight: any; repType: string; reps: any; repRangeMin: any; repRangeMax: any; }, i: number) => ({
-        workout_exercise_id: ex.id,
-        set_number: i + 1,
-        weight: set.weight,
-        reps: set.repType === "reps" ? set.reps : null,
-        rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
-        rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
-      }));
+      return original.sets.map(
+        (
+          set: {
+            weight: any;
+            repType: string;
+            reps: any;
+            repRangeMin: any;
+            repRangeMax: any;
+          },
+          i: number,
+        ) => ({
+          workout_exercise_id: ex.id,
+          set_number: i + 1,
+          weight: set.weight,
+          reps: set.repType === "reps" ? set.reps : null,
+          rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
+          rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
+        }),
+      );
     });
 
     if (setsPayload.length > 0) {
