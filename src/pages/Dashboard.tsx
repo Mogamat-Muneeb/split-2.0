@@ -6,7 +6,6 @@ import LogWorkoutModal from "@/components/log-workout-modal";
 import Navbar from "@/components/navbar";
 import { formatTime } from "@/lib/utils";
 import { useLogWorkout } from "@/provider/LogWorkoutProvider";
-import { AnimatePresence } from "framer-motion";
 import { ChevronUp, Trash2 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 
@@ -34,12 +33,12 @@ const Dashboard = () => {
   };
 
   return (
-    <AnimatePresence>
+    <>
       <div className="min-h-screen relative flex h-full">
         <FloatingNav />
         <Navbar />
 
-        <div className="px-3 py-3 w-full">
+        <div className="px-3 py-3 w-full overflow-auto">
           <Outlet />
         </div>
       </div>
@@ -47,6 +46,7 @@ const Dashboard = () => {
       <LogWorkoutModal
         open={startWorkoutModalOpen}
         onClose={closeStartWorkoutModal}
+        //@ts-ignore
         workout={selectedWorkout || undefined}
         isEmptyWorkout={!selectedWorkout}
       />
@@ -65,13 +65,13 @@ const Dashboard = () => {
 
             <div className="flex flex-col">
               <h4 className="text-sm font-bold flex gap-2 items-center w-full pl-1">
-                <span className="flex justify-center flex-shrink-0">
+                <span className="flex justify-center ">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
                   </span>
                 </span>
-                <span className="flex-1 text-center">
+                <span className="flex-1 text-start text-nowrap">
                   {activeWorkout.name.length > 10
                     ? `${activeWorkout.name.slice(0, 10)}...`
                     : activeWorkout.name}
@@ -93,7 +93,7 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

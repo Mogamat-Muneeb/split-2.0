@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { motion } from "framer-motion";
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
 import { CircleCheck, ArrowLeft } from "lucide-react";
+import supabase from "@/lib/supabase";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface LoggingWorkoutProps {
   activeWorkout: ActiveWorkout | null;
@@ -28,7 +30,16 @@ interface Exercise {
 }
 
 const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
-  const { updateSet, addExercise, addSet, removeSet } = useLogWorkout();
+  const {
+    updateSet,
+    addExercise,
+    addSet,
+
+    setActiveWorkout,
+    openStartWorkoutModal,
+    setForceOpenWorkoutModal,
+  } = useLogWorkout();
+  const [user, setUser] = useState<any>(null);
   const [editingSet, setEditingSet] = useState<{
     exerciseId: string;
     setId: string;
@@ -36,6 +47,9 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     value: string;
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [workoutName, setWorkoutName] = useState(activeWorkout?.name || "");
+
+  const [isNewWorkout, setIsNewWorkout] = useState(false);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +61,24 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   const [exerciseRepTypes, setExerciseRepTypes] = useState<{
     [exerciseId: string]: "reps" | "repRange";
   }>({});
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("Error fetching user:", error);
+        return;
+      }
+
+      setUser(user);
+    };
+
+    getUser();
+  }, []);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -84,6 +116,42 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
       setExerciseRepTypes(repTypes);
     }
   }, [activeWorkout?.exercises]);
+
+  useEffect(() => {
+    if (activeWorkout) {
+      setWorkoutName(activeWorkout.name || "");
+
+      setIsNewWorkout(!activeWorkout.workoutId);
+    }
+  }, [activeWorkout]);
+
+  useEffect(() => {
+    if (!activeWorkout?.id) return;
+
+    const timeout = setTimeout(async () => {
+      if (workoutName === activeWorkout.name) return;
+
+      try {
+        const { error } = await supabase
+          .from("workout_sessions")
+          .update({ name: workoutName })
+          .eq("id", activeWorkout.id);
+
+        if (error) {
+          console.error("Error updating workout name:", error);
+          toast.error("Failed to update workout name");
+        }
+      } catch (error) {
+        console.error("Error updating workout name:", error);
+      }
+    }, 600);
+
+    return () => clearTimeout(timeout);
+  }, [workoutName, activeWorkout?.id]);
+
+  const handleWorkoutNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWorkoutName(e.target.value);
+  };
 
   const checkMobile = () => {
     setIsMobileView(window.innerWidth < 768);
@@ -217,11 +285,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     addSet(exerciseId, newSet);
   };
 
-  const handleRemoveSet = (exerciseId: string, setId: string) => {
-    if (confirm("Are you sure you want to remove this set?")) {
-      removeSet(exerciseId, setId);
-    }
-  };
+  // const handleRemoveSet = (exerciseId: string, setId: string) => {
+  //   if (confirm("Are you sure you want to remove this set?")) {
+  //     removeSet(exerciseId, setId);
+  //   }
+  // };
 
   const handleRepTypeChange = (
     exerciseId: string,
@@ -289,18 +357,129 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     return showLibrary;
   };
 
+  const handleSaveWorkout = async () => {
+    if (!activeWorkout) return;
+
+    try {
+      // 1️⃣ Create the workout
+      const { data: newWorkout, error: workoutError } = await supabase
+        .from("workouts")
+        .insert({
+          name: workoutName || "My Workout",
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (workoutError || !newWorkout) throw workoutError;
+
+      const workoutId = newWorkout.id;
+
+      // 2️⃣ Prepare exercises payload
+      const exercisesPayload = activeWorkout.exercises.map((ex, index) => ({
+        workout_id: workoutId,
+        name: ex.name,
+        notes: ex.notes,
+        exercise_id: ex.id,
+        rest_timer: ex.rest_timer,
+        position: index,
+        exercise_image: ex.exercise_image || null,
+      }));
+
+      // 3️⃣ Insert all exercises at once and get their IDs
+      const { data: insertedExercises, error: exercisesError } = await supabase
+        .from("workout_exercises")
+        .insert(exercisesPayload)
+        .select();
+
+      if (exercisesError || !insertedExercises) throw exercisesError;
+
+      // 4️⃣ Prepare sets payload using inserted exercise IDs
+      const setsPayload = insertedExercises.flatMap((insertedEx, exIndex) => {
+        const originalEx = activeWorkout.exercises[exIndex];
+        if (!originalEx.sets || originalEx.sets.length === 0) return [];
+
+        return originalEx.sets.map((set, setIndex) => ({
+          workout_exercise_id: insertedEx.id,
+          set_number: setIndex + 1,
+          weight: Number(set.weight) || 0,
+          reps: set.repType === "reps" ? Number(set.reps) || 0 : null,
+          rep_range_min:
+            set.repType === "repRange" ? Number(set.rep_range_min) || 0 : null,
+          rep_range_max:
+            set.repType === "repRange" ? Number(set.rep_range_max) || 0 : null,
+        }));
+      });
+
+      // 5️⃣ Insert all sets at once
+      if (setsPayload.length > 0) {
+        const { error: setsError } = await supabase
+          .from("sets")
+          .insert(setsPayload);
+        if (setsError) throw setsError;
+      }
+
+      // 6️⃣ Link session → workout
+      await supabase
+        .from("workout_sessions")
+        .update({ workout_id: workoutId })
+        .eq("id", activeWorkout.id);
+
+      // 7️⃣ Update local state
+      activeWorkout.workoutId = workoutId;
+
+      const savedActiveWorkout: ActiveWorkout = {
+        ...activeWorkout,
+        workoutId: workoutId,
+        exercises: insertedExercises.map((ex, exIndex) => ({
+          ...activeWorkout.exercises[exIndex],
+          id: ex.id,
+          sets: setsPayload
+            .filter((s) => s.workout_exercise_id === ex.id)
+            .map((s) => ({
+              ...activeWorkout.exercises[exIndex].sets[s.set_number - 1],
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              //@ts-expect-error
+              id: s.id,
+              set_number: s.set_number,
+            })),
+        })),
+      };
+
+      // Update context/state
+      openStartWorkoutModal(savedActiveWorkout);
+      setForceOpenWorkoutModal(true);
+      setActiveWorkout(savedActiveWorkout);
+      setIsNewWorkout(false);
+
+      toast.success("Workout saved 💪");
+    } catch (err) {
+      console.error("Failed to save workout:", err);
+      toast.error("Failed to save workout");
+    }
+  };
+
   return (
     <div className="">
       <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 py-4 lg:h-full h-fit">
         <div className="flex flex-col md:flex-row gap-4">
           {shouldShowWorkoutDetails() && (
             <div className="flex-1 space-y-4 ">
-              <div className="lg:max-h-98 max-h-[95vh] overflow-y-auto space-y-4 ">
-                {activeWorkout?.exercises?.map((exercise) => (
-                  <div
-                    key={exercise.id}
-                    className="bg-accent rounded-lg p-4 w-full"
-                  >
+              <div className="lg:max-h-98 max-h-[95vh] overflow-y-auto space-y-4  rounded-lg">
+                <div>
+                  <Input
+                    placeholder="Workout name"
+                    value={workoutName}
+                    onChange={handleWorkoutNameChange}
+                  />
+                </div>
+                {isNewWorkout && (
+                  <Button className="w-full" onClick={handleSaveWorkout}>
+                    Save Workout
+                  </Button>
+                )}
+                {activeWorkout?.exercises?.map((exercise, i) => (
+                  <div key={i} className="bg-accent rounded-lg p-4 w-full">
                     <div className="flex gap-2 items-center">
                       {exercise.exercise_image && (
                         <img
@@ -363,7 +542,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                       </div>
                       {exercise?.sets?.map((set, setIndex) => (
                         <div
-                          key={set.id}
+                          key={setIndex}
                           className={`grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 items-center text-sm p-4 group
                             ${
                               set.checked
@@ -515,7 +694,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
               </div>
 
               {shouldShowWorkoutDetails() && (
-                <div className="flex w-full">
+                <div className={` w-full flex lg:hidden`}>
                   <Button
                     className="w-full"
                     onClick={() => setShowLibrary(true)}
@@ -577,7 +756,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      {filteredExercises.map((exercise) => {
+                      {filteredExercises.map((exercise, i) => {
                         const exerciseData =
                           exercise.jsonContents?.[0]?.content;
                         const primaryMuscles =
@@ -588,7 +767,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                         );
                         return (
                           <motion.div
-                            key={exercise.folder}
+                            key={i}
                             whileHover={{ scale: 1.02 }}
                             className={`flex items-center justify-start py-1 overflow-hidden w-full ${
                               !isAlreadyAdded

@@ -27,7 +27,6 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     resumeWorkout,
     setForceOpenWorkoutModal,
     forceOpenWorkoutModal,
-    handleMinimize,
     setMiniMize,
   } = useLogWorkout();
 
@@ -40,7 +39,6 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
   };
 
   const handleMinimizeAndClose = () => {
-    console.log("// Instead of toggling, we want to minimize (set to true)");
     if (activeWorkout) {
       setMiniMize(true);
       localStorage.setItem("miniMize", JSON.stringify(true));
@@ -160,7 +158,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white dark:bg-[#1a1a1a] rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl"
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white dark:bg-[#1a1a1a] rounded-2xl p-6 w-full max-w-sm  shadow-xl"
           >
             <h2 className="tracking-tight font-bold mb-2">Start Workout</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">

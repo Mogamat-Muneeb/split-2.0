@@ -8,15 +8,20 @@ import React, {
 } from "react";
 import type { Workout, WorkoutExercise, Set, ActiveWorkout } from "@/lib/types";
 import supabase from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface LogWorkoutContextType {
   activeWorkout: ActiveWorkout | null;
-  startWorkout: (workout?: Workout) => void;
-  endWorkout: () => void;
-  addExercise: (exercise: WorkoutExercise) => void;
-  updateSet: (exerciseId: string, setId: string, data: Partial<Set>) => void;
+  startWorkout: (workout?: Workout) => Promise<void>;
+  endWorkout: () => Promise<void>;
+  addExercise: (exercise: WorkoutExercise) => Promise<void>;
+  updateSet: (
+    exerciseId: string,
+    setId: string,
+    data: Partial<Set>,
+  ) => Promise<void>;
   elapsedTime: number;
-  resetWorkout: () => void;
+  resetWorkout: () => Promise<void>;
   startWorkoutModalOpen: boolean;
   openStartWorkoutModal: (workout?: Workout | ActiveWorkout) => void;
   closeStartWorkoutModal: () => void;
@@ -30,6 +35,7 @@ interface LogWorkoutContextType {
   miniMize: boolean;
   handleMinimize: () => void;
   setStartWorkoutModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setActiveWorkout: React.Dispatch<React.SetStateAction<ActiveWorkout | null>>;
 }
 
 const LogWorkoutContext = createContext<LogWorkoutContextType | undefined>(
@@ -55,15 +61,10 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   const [miniMize, setMiniMize] = useState<boolean>(() =>
     JSON.parse(localStorage.getItem("miniMize") || "false"),
   );
-  console.log("🚀 ~ LogWorkoutProvider ~ miniMize:", miniMize);
 
-  // const handleMinimize = () => {
-  //   setMiniMize(!miniMize);
-  // };
-
-  // Reset miniMize when activeWorkout becomes null (no active workout)
   useEffect(() => {
     if (activeWorkout) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMiniMize(true);
       localStorage.setItem("miniMize", JSON.stringify(true));
     }
@@ -74,11 +75,9 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
       const next = !prev;
       localStorage.setItem("miniMize", JSON.stringify(next));
 
-      // If we're expanding (next === false), we need to open the modal
       if (!next && activeWorkout) {
-        // Open the modal by setting forceOpenWorkoutModal to true
         setForceOpenWorkoutModal(true);
-        // Also open the start workout modal if needed
+
         setStartWorkoutModalOpen(true);
       }
 
@@ -88,6 +87,14 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const fetchActiveWorkout = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn("No user logged in, skipping fetchActiveWorkout");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("workout_sessions")
         .select(
@@ -96,6 +103,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           name,
           started_at,
           workout_id,
+          user_id,
           workout_session_exercises (
             id,
             name,
@@ -116,6 +124,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         `,
         )
         .eq("status", "in_progress")
+        .eq("user_id", user.id) // FILTER BY USER
         .order("started_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -130,15 +139,17 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           rest_timer: ex.rest_timer,
           exercise_image: ex.exercise_image || null,
           sets:
-            ex.workout_sets?.map((set: any) => ({
-              id: set.id,
-              set_number: set.set_number,
-              reps: set.reps,
-              rep_range_min: set.rep_range_min,
-              rep_range_max: set.rep_range_max,
-              weight: set.weight,
-              checked: set.checked,
-            })) || [],
+            ex.workout_sets
+              ?.sort((a: any, b: any) => a.set_number - b.set_number)
+              .map((set: any) => ({
+                id: set.id,
+                set_number: set.set_number,
+                reps: set.reps,
+                rep_range_min: set.rep_range_min,
+                rep_range_max: set.rep_range_max,
+                weight: set.weight,
+                checked: set.checked,
+              })) || [],
         })) || [];
 
       setActiveWorkout({
@@ -149,175 +160,190 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         //@ts-ignore
         exercises,
+        isCustom: !data.workout_id,
       });
     };
 
     fetchActiveWorkout();
   }, []);
 
+  // Realtime subscription with user filter
   useEffect(() => {
     if (!activeWorkout?.id) {
       return;
     }
 
-    const channel = supabase
-      .channel(`workout-${activeWorkout.id}`)
+    let channel: any;
 
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "workout_sessions",
-          filter: `id=eq.${activeWorkout.id}`,
-        },
-        (payload) => {
-          setActiveWorkout((prev) => {
-            if (!prev) {
-              return prev;
-            }
-            const updated = { ...prev, ...payload.new };
-            return updated;
-          });
-        },
-      )
+    const setupRealtime = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
 
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "workout_session_exercises",
-          filter: `workout_session_id=eq.${activeWorkout.id}`,
-        },
-        (payload) => {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          //@ts-expect-error
-          setActiveWorkout((prev) => {
-            if (!prev) return prev;
+      channel = supabase
+        .channel(`workout-${activeWorkout.id}-user-${user.id}`)
 
-            const updatedExerciseFromDB = payload.new || payload.old;
-
-            const existingExercise = prev.exercises.find(
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              //@ts-expect-error
-              (ex) => ex.id === updatedExerciseFromDB.id,
-            );
-
-            const mergedExercise = {
-              ...updatedExerciseFromDB,
-              sets: existingExercise?.sets || [],
-            };
-
-            const exerciseExists = prev.exercises.some(
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              //@ts-expect-error
-              (ex) => ex.id === mergedExercise.id,
-            );
-
-            if (!exerciseExists) {
-              return prev;
-            }
-
-            const exercises = prev.exercises.map((ex) =>
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              //@ts-ignore
-              ex.id === mergedExercise.id ? mergedExercise : ex,
-            );
-
-            return { ...prev, exercises };
-          });
-        },
-      )
-
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "workout_sets",
-          filter: `exercise_id=in.(${activeWorkout.exercises
-            .map((ex) => ex.id)
-            .join(",")})`,
-        },
-        (payload) => {
-          // Handle different events
-          if (payload.eventType === "DELETE") {
-            // Remove the set from local state
-            const deletedSet = payload.old;
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "workout_sessions",
+            filter: `id=eq.${activeWorkout.id}`,
+          },
+          (payload) => {
             setActiveWorkout((prev) => {
-              if (!prev) return prev;
-
-              return {
-                ...prev,
-                exercises: prev.exercises.map((ex) => {
-                  if (ex.id === deletedSet.exercise_id) {
-                    return {
-                      ...ex,
-                      sets: ex.sets.filter((set) => set.id !== deletedSet.id),
-                    };
-                  }
-                  return ex;
-                }),
-              };
+              if (!prev) {
+                return prev;
+              }
+              const updated = { ...prev, ...payload.new };
+              return updated;
             });
-          } else {
-            // Handle INSERT and UPDATE
-            const setUpdate = payload.new;
+          },
+        )
+
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "workout_session_exercises",
+            filter: `workout_session_id=eq.${activeWorkout.id}`,
+          },
+          (payload) => {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            //@ts-expect-error
             setActiveWorkout((prev) => {
               if (!prev) return prev;
 
-              return {
-                ...prev,
-                exercises: prev.exercises.map((ex) => {
-                  if (ex.id === setUpdate?.exercise_id) {
-                    const setExists = ex.sets?.some(
-                      (s: any) => s.id === setUpdate.id,
-                    );
+              const updatedExerciseFromDB = payload.new || payload.old;
 
-                    if (setExists) {
-                      // Update existing set
+              const existingExercise = prev.exercises.find(
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                //@ts-expect-error
+                (ex) => ex.id === updatedExerciseFromDB.id,
+              );
+
+              const mergedExercise = {
+                ...updatedExerciseFromDB,
+                sets: existingExercise?.sets || [],
+              };
+
+              const exerciseExists = prev.exercises.some(
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                //@ts-expect-error
+                (ex) => ex.id === mergedExercise.id,
+              );
+
+              if (!exerciseExists) {
+                return prev;
+              }
+
+              const exercises = prev.exercises.map((ex) =>
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                //@ts-ignore
+                ex.id === mergedExercise.id ? mergedExercise : ex,
+              );
+
+              return { ...prev, exercises };
+            });
+          },
+        )
+
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "workout_sets",
+            filter: `exercise_id=in.(${activeWorkout.exercises
+              .map((ex) => ex.id)
+              .join(",")})`,
+          },
+          (payload) => {
+            // Handle different events
+            if (payload.eventType === "DELETE") {
+              // Remove the set from local state
+              const deletedSet = payload.old;
+              setActiveWorkout((prev) => {
+                if (!prev) return prev;
+
+                return {
+                  ...prev,
+                  exercises: prev.exercises.map((ex) => {
+                    if (ex.id === deletedSet.exercise_id) {
                       return {
                         ...ex,
-                        sets: ex.sets?.map((s: any) =>
-                          s.id === setUpdate.id ? setUpdate : s,
-                        ),
-                      };
-                    } else {
-                      // Add new set
-                      return {
-                        ...ex,
-                        sets: [...(ex.sets || []), setUpdate],
+                        sets: ex.sets.filter((set) => set.id !== deletedSet.id),
                       };
                     }
-                  }
-                  return ex;
-                }),
-              };
-            });
-          }
-        },
-      )
+                    return ex;
+                  }),
+                };
+              });
+            } else {
+              // Handle INSERT and UPDATE
+              const setUpdate = payload.new;
+              setActiveWorkout((prev) => {
+                if (!prev) return prev;
 
-      .subscribe((status, err) => {
-        if (status === "SUBSCRIBED") {
-          /* empty */
-        } else if (status === "CHANNEL_ERROR") {
-          console.error(
-            `[Workout Realtime] Subscription error for workout ${activeWorkout.id}:`,
-            err,
-          );
-        } else if (status === "TIMED_OUT") {
-          console.warn(
-            `[Workout Realtime] Subscription timed out for workout ${activeWorkout.id}`,
-          );
-        }
-      });
+                return {
+                  ...prev,
+                  exercises: prev.exercises.map((ex) => {
+                    if (ex.id === setUpdate?.exercise_id) {
+                      const setExists = ex.sets?.some(
+                        (s: any) => s.id === setUpdate.id,
+                      );
+
+                      if (setExists) {
+                        // Update existing set
+                        return {
+                          ...ex,
+                          sets: ex.sets?.map((s: any) =>
+                            s.id === setUpdate.id ? setUpdate : s,
+                          ),
+                        };
+                      } else {
+                        // Add new set
+                        return {
+                          ...ex,
+                          sets: [...(ex.sets || []), setUpdate],
+                        };
+                      }
+                    }
+                    return ex;
+                  }),
+                };
+              });
+            }
+          },
+        )
+
+        .subscribe((status, err) => {
+          if (status === "SUBSCRIBED") {
+            /* empty */
+          } else if (status === "CHANNEL_ERROR") {
+            console.error(
+              `[Workout Realtime] Subscription error for workout ${activeWorkout.id}:`,
+              err,
+            );
+          } else if (status === "TIMED_OUT") {
+            console.warn(
+              `[Workout Realtime] Subscription timed out for workout ${activeWorkout.id}`,
+            );
+          }
+        });
+    };
+
+    setupRealtime();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, [activeWorkout?.id]);
+  }, [activeWorkout?.id, activeWorkout?.exercises]);
 
   const [startWorkoutModalOpen, setStartWorkoutModalOpen] = useState(false);
 
@@ -326,25 +352,39 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   >(null);
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    //@ts-expect-error
     let interval: NodeJS.Timer;
-  
+
     if (activeWorkout?.startedAt) {
       interval = setInterval(() => {
         const now = new Date().getTime();
         const started = new Date(activeWorkout.startedAt).getTime();
-  
+
         const seconds = Math.floor((now - started) / 1000);
         setElapsedTime(seconds);
       }, 1000);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsedTime(0);
     }
-  
+
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [activeWorkout?.startedAt]);
+
   const startWorkout = async (workout?: Workout) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.error("No user");
+      return;
+    }
+
+    // 1. Create session
     const { data: session, error } = await supabase
       .from("workout_sessions")
       .insert([
@@ -352,19 +392,21 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           name: workout?.name || "New Workout",
           status: "in_progress",
           workout_id: workout?.id || null,
+          user_id: user.id,
         },
       ])
       .select()
       .single();
 
     if (error || !session) {
-      console.error("Error starting workout:", error);
+      console.error(error);
       return;
     }
 
+    // 2. Insert exercises + sets
     if (workout?.workout_exercises?.length) {
       for (const ex of workout.workout_exercises) {
-        const { data: newExercise, error: exError } = await supabase
+        const { data: newExercise } = await supabase
           .from("workout_session_exercises")
           .insert([
             {
@@ -381,65 +423,102 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           .select()
           .single();
 
-        if (exError || !newExercise) {
-          console.error("Error inserting exercise:", exError);
-          continue;
-        }
+        if (!newExercise) continue;
 
         if (ex.sets?.length) {
-          const setsToInsert = ex.sets.map((set) => ({
-            exercise_id: newExercise.id,
-            set_number: set.set_number,
-            reps: set.reps,
-            rep_range_min: set.rep_range_min,
-            rep_range_max: set.rep_range_max,
-            weight: set.weight,
-            checked: false,
-          }));
-
-          const { error: setError } = await supabase
-            .from("workout_sets")
-            .insert(setsToInsert);
-
-          if (setError) {
-            console.error("Error inserting sets:", setError);
-          }
+          await supabase.from("workout_sets").insert(
+            ex.sets.map((set) => ({
+              exercise_id: newExercise.id,
+              set_number: set.set_number,
+              reps: set.reps,
+              rep_range_min: set.rep_range_min,
+              rep_range_max: set.rep_range_max,
+              weight: set.weight,
+              checked: false,
+            })),
+          );
         }
       }
     }
 
-    const formattedExercises =
-      workout?.workout_exercises?.map((ex, index) => ({
-        id: `temp-${index}`,
+    // 🔥 3. Fetch FULL workout with REAL IDs
+    const { data, error: fetchError } = await supabase
+      .from("workout_sessions")
+      .select(
+        `
+        id,
+        name,
+        started_at,
+        workout_id,
+        workout_session_exercises (
+          id,
+          name,
+          notes,
+          rest_timer,
+          order_index,
+          exercise_image,
+          workout_sets (
+            id,
+            set_number,
+            reps,
+            rep_range_min,
+            rep_range_max,
+            weight,
+            checked
+          )
+        )
+      `,
+      )
+      .eq("id", session.id)
+      .single();
+
+    if (fetchError || !data) {
+      console.error(fetchError);
+      return;
+    }
+
+    // 4. Set state with REAL DB IDs only
+    const exercises =
+      data.workout_session_exercises?.map((ex: any) => ({
+        id: ex.id,
         name: ex.name,
         notes: ex.notes,
         rest_timer: ex.rest_timer,
         exercise_image: ex.exercise_image || null,
-        order_index: ex.order_index || 0,
         sets:
-          ex.sets?.map((set, setIndex) => ({
-            id: `temp-set-${index}-${setIndex}`,
-            set_number: set.set_number,
-            reps: set.reps,
-            rep_range_min: set.rep_range_min,
-            rep_range_max: set.rep_range_max,
-            weight: set.weight,
-            checked: false,
-          })) || [],
+          ex.workout_sets
+            ?.sort((a: any, b: any) => a.set_number - b.set_number)
+            .map((set: any) => ({
+              id: set.id,
+              set_number: set.set_number,
+              reps: set.reps,
+              rep_range_min: set.rep_range_min,
+              rep_range_max: set.rep_range_max,
+              weight: set.weight,
+              checked: set.checked,
+            })) || [],
       })) || [];
 
     setActiveWorkout({
-      id: session.id,
-      name: session.name,
-      workoutId: workout?.id ?? null,
-      startedAt: new Date(session.started_at),
+      id: data.id,
+      name: data.name,
+      workoutId: data.workout_id ?? null,
+      startedAt: new Date(data.started_at),
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      //@ts-ignore
-      exercises: formattedExercises,
+      //@ts-expect-error
+      exercises,
+      isCustom: !data.workout_id,
     });
   };
+
+  // END WORKOUT - WITH USER VERIFICATION
   const endWorkout = async () => {
     if (!activeWorkout?.id) return;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     await supabase
       .from("workout_sessions")
@@ -447,14 +526,24 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         status: "finished",
         ended_at: new Date(),
       })
-      .eq("id", activeWorkout.id);
+      .eq("id", activeWorkout.id)
+      .eq("user_id", user.id); 
 
+    toast.success("Well done buddy ✅!");
     setActiveWorkout(null);
     setElapsedTime(0);
+    setForceOpenWorkoutModal(false);
+    setStartWorkoutModalOpen(false);
   };
 
+  // RESET WORKOUT - WITH USER VERIFICATION
   const resetWorkout = async () => {
     if (!activeWorkout?.id) return;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     await supabase
       .from("workout_sessions")
@@ -462,14 +551,23 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         status: "discarded",
         ended_at: new Date(),
       })
-      .eq("id", activeWorkout.id);
+      .eq("id", activeWorkout.id)
+      .eq("user_id", user.id);
 
     setActiveWorkout(null);
     setElapsedTime(0);
+    setForceOpenWorkoutModal(false);
+    setStartWorkoutModalOpen(false);
   };
 
+  // ADD EXERCISE - WITH USER VERIFICATION (optional but good practice)
   const addExercise = async (exercise: any) => {
     if (!activeWorkout) return;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     const exerciseName =
       exercise.jsonContents?.[0]?.content?.name ||
@@ -495,6 +593,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           rep_range_max: null,
           checked: false,
         };
+
     const { data: newExercise, error } = await supabase
       .from("workout_session_exercises")
       .insert([
@@ -548,13 +647,16 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           ...prev.exercises,
           {
             ...newExercise,
-            sets: insertedSets || [], // ✅ FIXED
+            sets: insertedSets || [],
           },
         ],
       };
     });
+
+    toast.success("Exercise added! ");
   };
 
+  // ADD SET
   const addSet = async (exerciseId: string, newSet: any) => {
     if (!activeWorkout) return;
 
@@ -600,8 +702,11 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         }),
       };
     });
+
+    toast.success("Set added! ");
   };
 
+  // REMOVE SET
   const removeSet = async (exerciseId: string, setId: string) => {
     if (!activeWorkout) return;
 
@@ -650,6 +755,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  // UPDATE SET
   const updateSet = async (
     exerciseId: string,
     setId: string,
@@ -657,7 +763,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   ) => {
     if (!activeWorkout) return;
 
-    // 🔥 Update locally
+    // Update locally
     setActiveWorkout((prev) => {
       if (!prev) return prev;
       return {
@@ -688,6 +794,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error updating set:", error);
     }
+
+    toast.success("Done ✅!");
   };
 
   const openStartWorkoutModal = (workout?: Workout | ActiveWorkout) => {
@@ -730,6 +838,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         setMiniMize,
         miniMize,
         setStartWorkoutModalOpen,
+        setActiveWorkout,
       }}
     >
       {children}

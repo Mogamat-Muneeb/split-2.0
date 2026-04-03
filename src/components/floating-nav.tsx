@@ -69,7 +69,7 @@ const FloatingNav = () => {
   };
 
   return (
-    <div className="w-fit fixed bottom-4 left-0 right-0 mx-auto block lg:hidden">
+    <div className="w-fit fixed bottom-4 left-0 right-0 mx-auto block lg:hidden z-[100]">
       <div className="flex gap-10 items-center transition-all duration-200  p-2 min-w-[150px] w-full  rounded-3xl blur-in bg-[#FAF6FA] dark:bg-[#2d2d2d]">
         <div className="flex items-center justify-center ">
           {navItems.map((item) => {

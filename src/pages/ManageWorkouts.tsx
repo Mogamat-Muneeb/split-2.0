@@ -48,24 +48,6 @@ const ManageWorkouts = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const LoadingSkeleton = () => (
-    <div className="space-y-3">
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl animate-pulse"
-        >
-          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3"></div>
-          <div className="space-y-2">
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
   useEffect(() => {
     let subscription: any;
 
