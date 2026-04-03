@@ -13,7 +13,8 @@ const SortableSetItem: React.FC<{
   folder: string;
   updateSet: (folder: string, setIndex: number, updates: Partial<Set>) => void;
   removeSet: (folder: string, setIndex: number) => void;
-}> = ({ set, setIndex, folder, updateSet, removeSet }) => {
+  showWeight: boolean;
+}> = ({ set, setIndex, folder, updateSet, removeSet, showWeight }) => {
   const {
     attributes,
     listeners,
@@ -43,21 +44,25 @@ const SortableSetItem: React.FC<{
           <div {...listeners} className="cursor-grab active:cursor-grabbing">
             <GripVertical size={14} />
           </div>
-          <div className="w-fit flex flex-col gap-2 font-medium">{setIndex + 1}</div>
+          <div className="w-fit flex flex-col gap-2 font-medium">
+            {setIndex + 1}
+          </div>
         </div>
 
-        <div className=" flex flex-col gap-2 ">
-          <Input
-            type="number"
-            placeholder="0"
-            value={set.weight || ""}
-            onChange={(e) =>
-              updateSet(folder, setIndex, {
-                weight: parseFloat(e.target.value) || 0,
-              })
-            }
-          />
-        </div>
+        {showWeight && (
+          <div className=" flex flex-col gap-2 ">
+            <Input
+              type="number"
+              placeholder="0"
+              value={set.weight || ""}
+              onChange={(e) =>
+                updateSet(folder, setIndex, {
+                  weight: parseFloat(e.target.value) || 0,
+                })
+              }
+            />
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           {set.repType === "reps" ? (

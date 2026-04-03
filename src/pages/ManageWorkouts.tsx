@@ -219,7 +219,7 @@ const ManageWorkouts = () => {
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
       <div className="flex items-center justify-between ">
-        <h2 className="text-orange-600 font-black text-2xl tracking-tight">
+        <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">
           Manage workouts
         </h2>
         <Button
@@ -322,7 +322,7 @@ const ManageWorkouts = () => {
                       </h3>
 
                       <h3 className="flex lg:hidden font-bold tracking-tight truncate">
-                        {workout.name.length > 15
+                        {workout.name.length > 10
                           ? `${workout.name.slice(0, 15)}...`
                           : workout.name}
                       </h3>

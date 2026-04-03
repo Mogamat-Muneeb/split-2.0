@@ -57,17 +57,16 @@ const SortableExerciseItem: React.FC<{
 }> = ({
   exercise,
   workoutExercise,
-
   updateWorkoutExercise,
   updateSet,
   addSet,
   removeSet,
-
   removeExercise,
   onSetDragEnd,
   onSetDragStart,
   sensors,
 }) => {
+  console.log("🚀 ~ SortableExerciseItem ~ exercise:", exercise)
   const {
     attributes,
     listeners,
@@ -82,6 +81,22 @@ const SortableExerciseItem: React.FC<{
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  const WEIGHT_CATEGORIES = [
+    "strength",
+    "powerlifting",
+    "olympic weightlifting",
+    "strongman",
+  ];
+
+  const shouldShowWeight = (category?: string) =>
+    WEIGHT_CATEGORIES.includes(category || "");
+
+  const category = exercise.jsonContents?.[0]?.content?.category || "";
+
+  const showWeight = shouldShowWeight(category);
+  console.log("🚀 ~ SortableExerciseItem ~ exercise:", exercise);
+  console.log("🚀 ~ SortableExerciseItem ~ showWeight:", showWeight);
 
   return (
     <div
@@ -188,10 +203,11 @@ const SortableExerciseItem: React.FC<{
                   <div>SET</div>
                 </div>
 
-                <div className="flex items-center justify-center w-full">
-                  KG
-                </div>
-
+                {showWeight && (
+                  <div className="flex items-center justify-center w-full">
+                    KG
+                  </div>
+                )}
                 <div className="flex flex-col items-center justify-center w-full">
                   <Select
                     value={workoutExercise.sets[0]?.repType || "reps"}
@@ -247,6 +263,7 @@ const SortableExerciseItem: React.FC<{
                     folder={exercise.folder}
                     updateSet={updateSet}
                     removeSet={removeSet}
+                    showWeight={showWeight}
                   />
                 ))}
               </div>
