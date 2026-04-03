@@ -6,7 +6,6 @@ import LogWorkoutModal from "@/components/log-workout-modal";
 import Navbar from "@/components/navbar";
 import { formatTime } from "@/lib/utils";
 import { useLogWorkout } from "@/provider/LogWorkoutProvider";
-import { AnimatePresence } from "framer-motion";
 import { ChevronUp, Trash2 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 
@@ -34,12 +33,12 @@ const Dashboard = () => {
   };
 
   return (
-    <AnimatePresence>
+    <>
       <div className="min-h-screen relative flex h-full">
         <FloatingNav />
         <Navbar />
 
-        <div className="px-3 py-3 w-full">
+        <div className="px-3 py-3 w-full overflow-auto">
           <Outlet />
         </div>
       </div>
@@ -47,6 +46,7 @@ const Dashboard = () => {
       <LogWorkoutModal
         open={startWorkoutModalOpen}
         onClose={closeStartWorkoutModal}
+        //@ts-ignore
         workout={selectedWorkout || undefined}
         isEmptyWorkout={!selectedWorkout}
       />
@@ -95,7 +95,7 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

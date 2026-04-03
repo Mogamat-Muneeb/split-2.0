@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 import supabase from "@/lib/supabase";
 
@@ -31,6 +31,7 @@ interface Workout {
 
 const Splits = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  console.log("🚀 ~ Splits ~ workouts:", workouts);
 
   useEffect(() => {
     let subscription: any;

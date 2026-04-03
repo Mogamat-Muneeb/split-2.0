@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Splits from "./pages/splits";
 import ManageWorkouts from "./pages/ManageWorkouts";
 import Measure from "./pages/Measure";
+import StatsHome from "./pages/StatsHome";
 
 export default function App() {
   return (
@@ -22,17 +23,17 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="stats" element={<Measure />} />
+        <Route path="stats" element={<Measure />}>
+          <Route index element={<StatsHome />} />
+          <Route path="exercises" element={<div>Exercises Content</div>} />
+          <Route
+            path="measurements"
+            element={<div>Measurements Content</div>}
+          />
+        </Route>
         <Route path="splits" element={<Splits />} />
         <Route path="manage-workouts" element={<ManageWorkouts />} />
-        <Route
-          path="exercises"
-          element={
-            <div>
-              <div className="">Dashboard Exercises</div>
-            </div>
-          }
-        />
+        <Route path="exercises" element={<div>Dashboard Exercises</div>} />
       </Route>
     </Routes>
   );

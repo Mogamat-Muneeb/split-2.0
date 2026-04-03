@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { motion } from "framer-motion";
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
 import { CircleCheck, ArrowLeft } from "lucide-react";
+import supabase from "@/lib/supabase";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface LoggingWorkoutProps {
   activeWorkout: ActiveWorkout | null;
@@ -66,6 +68,24 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
   } | null>(null);
 
   useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("Error fetching user:", error);
+        return;
+      }
+
+      setUser(user);
+    };
+
+    getUser();
+  }, []);
+
+  useEffect(() => {
     const fetchExercises = async () => {
       try {
         setLoading(true);
@@ -101,6 +121,42 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
       setExerciseRepTypes(repTypes);
     }
   }, [activeWorkout?.exercises]);
+
+  useEffect(() => {
+    if (activeWorkout) {
+      setWorkoutName(activeWorkout.name || "");
+
+      setIsNewWorkout(!activeWorkout.workoutId);
+    }
+  }, [activeWorkout]);
+
+  useEffect(() => {
+    if (!activeWorkout?.id) return;
+
+    const timeout = setTimeout(async () => {
+      if (workoutName === activeWorkout.name) return;
+
+      try {
+        const { error } = await supabase
+          .from("workout_sessions")
+          .update({ name: workoutName })
+          .eq("id", activeWorkout.id);
+
+        if (error) {
+          console.error("Error updating workout name:", error);
+          toast.error("Failed to update workout name");
+        }
+      } catch (error) {
+        console.error("Error updating workout name:", error);
+      }
+    }, 600);
+
+    return () => clearTimeout(timeout);
+  }, [workoutName, activeWorkout?.id]);
+
+  const handleWorkoutNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWorkoutName(e.target.value);
+  };
 
   const checkMobile = () => {
     setIsMobileView(window.innerWidth < 768);
@@ -386,11 +442,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
     addSet(exerciseId, newSet);
   };
 
-  const handleRemoveSet = (exerciseId: string, setId: string) => {
-    if (confirm("Are you sure you want to remove this set?")) {
-      removeSet(exerciseId, setId);
-    }
-  };
+  // const handleRemoveSet = (exerciseId: string, setId: string) => {
+  //   if (confirm("Are you sure you want to remove this set?")) {
+  //     removeSet(exerciseId, setId);
+  //   }
+  // };
 
   const handleRepTypeChange = (
     exerciseId: string,
@@ -824,7 +880,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      {filteredExercises.map((exercise) => {
+                      {filteredExercises.map((exercise, i) => {
                         const exerciseData =
                           exercise.jsonContents?.[0]?.content;
                         const primaryMuscles =
@@ -835,7 +891,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
                         );
                         return (
                           <motion.div
-                            key={exercise.folder}
+                            key={i}
                             whileHover={{ scale: 1.02 }}
                             className={`flex items-center justify-start py-1 overflow-hidden w-full ${
                               !isAlreadyAdded

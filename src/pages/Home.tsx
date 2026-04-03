@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Dumbbell, Play } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -118,24 +118,6 @@ const Home = () => {
     };
   }, []);
 
-  const LoadingSkeleton = () => (
-    <div className="space-y-3">
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl animate-pulse"
-        >
-          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3"></div>
-          <div className="space-y-2">
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
       <div>
@@ -147,6 +129,31 @@ const Home = () => {
 
       <div>
         <div className="grid lg:grid-cols-2 grid-cols-1 gap-4">
+          <motion.div
+            className="flex justify-between items-center bg-[#3D348B] h-full rounded-4xl p-5 lg:col-span-3"
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <div>
+              <h2 className="text-base tracking-tight font-bold text-white dark:text-accent-foreground">
+                Current Split
+              </h2>
+              <p className="text-sm text-white dark:text-accent-foreground">
+                Build your session as you go
+              </p>
+            </div>
+            <motion.div
+              onClick={() => {
+                console.log("current split");
+              }}
+              className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground"
+              whileHover={{ scale: 1.1 }}
+              transition={{ type: "spring", stiffness: 400 }}
+            >
+              <Play className="stroke-background fill-background" size={18} />
+            </motion.div>
+          </motion.div>
+
           <motion.div
             className="flex justify-between items-center bg-orange-600 h-full rounded-4xl p-5"
             whileHover={{ scale: 1.02 }}
@@ -174,6 +181,7 @@ const Home = () => {
               <Play className="stroke-background fill-background" size={18} />
             </motion.div>
           </motion.div>
+
           <Link to={"/dashboard/manage-workouts"}>
             <motion.div
               className="flex justify-between items-center gap-2 bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl p-5"
@@ -204,7 +212,7 @@ const Home = () => {
       <div className="flex flex-col gap-5">
         <div className="flex w-full justify-between items-center">
           <h2 className="font-bold tracking-tight">My workouts</h2>
-          <p className="text-orange-600 text-sm">View all</p>
+          {/* <p className="text-orange-600 text-sm">View all</p> */}
         </div>
 
         <div className="mt-4 flex items-center w-full">
@@ -240,7 +248,7 @@ const Home = () => {
               </div>
             )}
 
-            <div className="lg:grid-cols-2 grid-cols-1 grid gap-4">
+            <div className="lg:grid-cols-2 grid-cols-1 grid gap-3">
               {!isLoading &&
                 !error &&
                 workouts.map((workout) => {

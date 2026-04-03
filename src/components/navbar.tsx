@@ -70,7 +70,7 @@ const Navbar = () => {
 
   return (
     <div className=" lg:flex justify-center items-center h-full min-h-screen">
-      <div className="p-3 lg:flex flex-col hidden justify-center  gap-4 items-center bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl mx-4">
+      <div className="p-3 lg:flex flex-col hidden justify-center  gap-4 items-center bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-4xl mx-4 fixed h-fit left-0 z-[100]">
         <div className="flex flex-col items-center gap-20">
           <div className="flex flex-col items-center justify-start gap-4  ">
             {navItems.map((item) => {

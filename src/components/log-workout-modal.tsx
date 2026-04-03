@@ -27,7 +27,6 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     resumeWorkout,
     setForceOpenWorkoutModal,
     forceOpenWorkoutModal,
-    handleMinimize,
     setMiniMize,
   } = useLogWorkout();
 
@@ -40,7 +39,6 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
   };
 
   const handleMinimizeAndClose = () => {
-    console.log("// Instead of toggling, we want to minimize (set to true)");
     if (activeWorkout) {
       setMiniMize(true);
       localStorage.setItem("miniMize", JSON.stringify(true));
