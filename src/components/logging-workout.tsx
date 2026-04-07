@@ -376,15 +376,17 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
       const workoutId = newWorkout.id;
 
       // 2️⃣ Prepare exercises payload
-      const exercisesPayload = activeWorkout.exercises.map((ex, index) => ({
-        workout_id: workoutId,
-        name: ex.name,
-        notes: ex.notes,
-        exercise_id: ex.id,
-        rest_timer: ex.rest_timer,
-        position: index,
-        exercise_image: ex.exercise_image || null,
-      }));
+      const exercisesPayload = activeWorkout.exercises.map((ex, index) => {
+        return {
+          workout_id: workoutId,
+          name: ex.name,
+          notes: ex.notes,
+          exercise_id: ex.name,
+          rest_timer: ex.rest_timer,
+          position: index,
+          exercise_image: ex.exercise_image || null,
+        };
+      });
 
       // 3️⃣ Insert all exercises at once and get their IDs
       const { data: insertedExercises, error: exercisesError } = await supabase

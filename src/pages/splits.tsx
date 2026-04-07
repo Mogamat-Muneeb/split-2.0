@@ -31,7 +31,6 @@ interface Workout {
 
 const Splits = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  console.log("🚀 ~ Splits ~ workouts:", workouts);
 
   useEffect(() => {
     let subscription: any;

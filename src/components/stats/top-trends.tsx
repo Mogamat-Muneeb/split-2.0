@@ -56,7 +56,7 @@ const TopTrends = () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log("🚀 ~ fetchTrendingExercises ~ user:", user);
+
       if (!user) return;
 
       // Calculate date ranges
@@ -153,20 +153,7 @@ const TopTrends = () => {
       // Calculate trends for each exercise
       const trends: TrendData[] = [];
 
-      console.log("exerciseData", exerciseData);
-      console.log("Number of exercises:", exerciseData.size);
-
       exerciseData.forEach((dataPoints, exerciseName) => {
-        console.log(`${exerciseName}: ${dataPoints.length} data points`);
-        console.log("Data points:", dataPoints);
-
-        if (dataPoints.length < 2) {
-          console.log(
-            `❌ ${exerciseName} skipped - only ${dataPoints.length} data points`,
-          );
-          return;
-        }
-
         if (dataPoints.length < 2) return; // Need minimum data points
 
         // Sort by date
@@ -194,15 +181,6 @@ const TopTrends = () => {
         const weeksDiff = Math.ceil(sorted.length / 2 / 7); // Approximate
         const weeklyChange = change / (weeksDiff || 1);
 
-        console.log(`${exerciseName}: changePercent = ${changePercent}%`);
-        if (Math.abs(changePercent) > 1) {
-          console.log(`✅ ${exerciseName} included!`);
-        } else {
-          console.log(
-            `❌ ${exerciseName} excluded - change only ${changePercent}%`,
-          );
-        }
-
         if (Math.abs(changePercent) > 3) {
           // Only show trends with >5% change
           trends.push({
@@ -223,7 +201,6 @@ const TopTrends = () => {
       const topTrends = trends
         .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
         .slice(0, 3);
-      console.log("🚀 ~ fetchTrendingExercises ~ topTrends:", topTrends);
 
       setTrendsData(topTrends);
       setCurrentIndex(0);

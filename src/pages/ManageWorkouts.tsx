@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import CreateWorkoutModal from "@/components/create-workout-modal";
 import { Button } from "@/components/ui/button";
 import supabase from "@/lib/supabase";
 import type { Workout } from "@/lib/types";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 
 import {
   DropdownMenu,
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { EllipsisVertical, AlertTriangle } from "lucide-react";
+import { EllipsisVertical, AlertTriangle, ArrowLeft } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
 const ManageWorkouts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,6 +39,10 @@ const ManageWorkouts = () => {
   const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const isInitialMount = useRef(true);
+  const processingRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1019);
@@ -48,8 +54,179 @@ const ManageWorkouts = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Function to fetch complete workout data including exercises and sets
+  const fetchCompleteWorkoutData = async (userId: string) => {
+    // First fetch all workouts
+    const { data: workoutsData, error: workoutsError } = await supabase
+      .from("workouts")
+      .select(
+        `
+        id,
+        name,
+        created_at
+      `,
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (workoutsError) throw workoutsError;
+    if (!workoutsData) return [];
+
+    // Then fetch all workout_exercises for these workouts
+    const workoutIds = workoutsData.map((w) => w.id);
+
+    const { data: exercisesData, error: exercisesError } = await supabase
+      .from("workout_exercises")
+      .select(
+        `
+        id,
+        workout_id,
+        exercise_id,
+        name,
+        notes,
+        rest_timer,
+        position,
+        exercise_image
+      `,
+      )
+      .in("workout_id", workoutIds)
+      .order("position", { ascending: true });
+
+    if (exercisesError) throw exercisesError;
+
+    // Then fetch all sets for these exercises
+    const exerciseIds = exercisesData?.map((e) => e.id) || [];
+
+    const { data: setsData, error: setsError } = await supabase
+      .from("sets")
+      .select(
+        `
+        id,
+        workout_exercise_id,
+        set_number,
+        weight,
+        reps,
+        rep_range_min,
+        rep_range_max
+      `,
+      )
+      .in("workout_exercise_id", exerciseIds)
+      .order("set_number", { ascending: true });
+
+    if (setsError) throw setsError;
+
+    // Combine the data
+    const exercisesWithSets =
+      exercisesData?.map((exercise) => ({
+        ...exercise,
+        sets:
+          setsData?.filter((set) => set.workout_exercise_id === exercise.id) ||
+          [],
+      })) || [];
+
+    const completeWorkouts = workoutsData.map((workout) => ({
+      ...workout,
+      workout_exercises: exercisesWithSets.filter(
+        (ex) => ex.workout_id === workout.id,
+      ),
+    }));
+
+    return completeWorkouts;
+  };
+
+  // Function to refetch a specific workout's data
+  const refetchWorkout = useCallback(
+    async (workoutId: string, userId: string) => {
+      // Prevent duplicate processing
+      if (processingRef.current.has(workoutId)) {
+        return null;
+      }
+
+      processingRef.current.add(workoutId);
+
+      try {
+        // Fetch the workout
+        const { data: workoutData, error: workoutError } = await supabase
+          .from("workouts")
+          .select(
+            `
+          id,
+          name,
+          created_at
+        `,
+          )
+          .eq("id", workoutId)
+          .eq("user_id", userId)
+          .single();
+
+        if (workoutError) throw workoutError;
+
+        // Fetch exercises for this workout
+        const { data: exercisesData, error: exercisesError } = await supabase
+          .from("workout_exercises")
+          .select(
+            `
+          id,
+          workout_id,
+          exercise_id,
+          name,
+          notes,
+          rest_timer,
+          position,
+          exercise_image
+        `,
+          )
+          .eq("workout_id", workoutId)
+          .order("position", { ascending: true });
+
+        if (exercisesError) throw exercisesError;
+
+        // Fetch sets for these exercises
+        const exerciseIds = exercisesData?.map((e) => e.id) || [];
+
+        const { data: setsData, error: setsError } = await supabase
+          .from("sets")
+          .select(
+            `
+          id,
+          workout_exercise_id,
+          set_number,
+          weight,
+          reps,
+          rep_range_min,
+          rep_range_max
+        `,
+          )
+          .in("workout_exercise_id", exerciseIds)
+          .order("set_number", { ascending: true });
+
+        if (setsError) throw setsError;
+
+        // Combine the data
+        const exercisesWithSets =
+          exercisesData?.map((exercise) => ({
+            ...exercise,
+            sets:
+              setsData?.filter(
+                (set) => set.workout_exercise_id === exercise.id,
+              ) || [],
+          })) || [];
+
+        return {
+          ...workoutData,
+          workout_exercises: exercisesWithSets,
+        };
+      } finally {
+        processingRef.current.delete(workoutId);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
-    let subscription: any;
+    let workoutsSubscription: any;
+    let workoutExercisesSubscription: any;
+    let setsSubscription: any;
 
     const fetchWorkouts = async () => {
       try {
@@ -61,41 +238,12 @@ const ManageWorkouts = () => {
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data: workoutsData, error } = await supabase
-          .from("workouts")
-          .select(
-            `
-            id,
-            name,
-            created_at,
-            workout_exercises(
-              id,
-              exercise_id,
-              name,
-              notes,
-              rest_timer,
-              position,
-              exercise_image,
-              sets(
-                id,
-                set_number,
-                weight,
-                reps,
-                rep_range_min,
-                rep_range_max
-              )
-            )
-          `,
-          )
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+        const workoutsData = await fetchCompleteWorkoutData(user.id);
+        setWorkouts(workoutsData as unknown as Workout[]);
+        isInitialMount.current = false;
 
-        if (error) throw error;
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-expect-error
-        setWorkouts(workoutsData || []);
-
-        subscription = supabase
+        // Subscribe to workouts table
+        workoutsSubscription = supabase
           .channel(`public:workouts:user_id=eq.${user.id}`)
           .on(
             "postgres_changes",
@@ -105,23 +253,167 @@ const ManageWorkouts = () => {
               table: "workouts",
               filter: `user_id=eq.${user.id}`,
             },
-            (payload) => {
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              //@ts-expect-error
-              setWorkouts((prev) => {
-                switch (payload.eventType) {
-                  case "INSERT":
-                    return [payload.new, ...prev];
-                  case "UPDATE":
-                    return prev.map((w) =>
-                      w.id === payload.new.id ? payload.new : w,
+            async (payload) => {
+              if (payload.eventType === "INSERT") {
+                // Check if workout already exists to prevent duplicates
+                setWorkouts((prev) => {
+                  const exists = prev.some((w) => w.id === payload.new.id);
+                  if (exists) return prev;
+
+                  // Create a temporary workout object with empty exercises
+                  // We'll fetch the complete data separately
+                  const tempWorkout = {
+                    id: payload.new.id,
+                    name: payload.new.name,
+                    created_at: payload.new.created_at,
+                    workout_exercises: [],
+                  } as unknown as Workout;
+
+                  return [tempWorkout, ...prev];
+                });
+
+                // Then fetch complete data for the new workout
+                try {
+                  const completeWorkout = await refetchWorkout(
+                    payload.new.id,
+                    user.id,
+                  );
+                  if (completeWorkout) {
+                    setWorkouts((prev) =>
+                      prev.map((w) =>
+                        w.id === payload.new.id
+                          ? (completeWorkout as unknown as Workout)
+                          : w,
+                      ),
                     );
-                  case "DELETE":
-                    return prev.filter((w) => w.id !== payload.old.id);
-                  default:
-                    return prev;
+                  }
+                } catch (err) {
+                  console.error("Failed to fetch complete workout data:", err);
                 }
-              });
+              } else if (payload.eventType === "UPDATE") {
+                // Refetch the updated workout to get complete data
+                try {
+                  const updatedWorkout = await refetchWorkout(
+                    payload.new.id,
+                    user.id,
+                  );
+                  if (updatedWorkout) {
+                    setWorkouts((prev) =>
+                      prev.map((w) =>
+                        w.id === payload.new.id
+                          ? (updatedWorkout as unknown as Workout)
+                          : w,
+                      ),
+                    );
+                  }
+                } catch (err) {
+                  console.error("Failed to refetch updated workout:", err);
+                }
+              } else if (payload.eventType === "DELETE") {
+                setWorkouts((prev) =>
+                  prev.filter((w) => w.id !== payload.old.id),
+                );
+              }
+            },
+          )
+          .subscribe();
+
+        // Subscribe to workout_exercises table
+        workoutExercisesSubscription = supabase
+          .channel(`public:workout_exercises`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "workout_exercises",
+            },
+            async (payload) => {
+              // Refetch the affected workout when exercises change
+
+              const workoutId =
+                //@ts-expect-error
+                payload.new?.workout_id || payload.old?.workout_id;
+              if (workoutId) {
+                try {
+                  const updatedWorkout = await refetchWorkout(
+                    workoutId,
+                    user.id,
+                  );
+                  if (updatedWorkout) {
+                    setWorkouts((prev) =>
+                      prev.map((w) =>
+                        w.id === workoutId
+                          ? (updatedWorkout as unknown as Workout)
+                          : w,
+                      ),
+                    );
+                  }
+                } catch (err) {
+                  console.error(
+                    "Failed to refetch workout after exercise change:",
+                    err,
+                  );
+                }
+              }
+            },
+          )
+          .subscribe();
+
+        // Subscribe to sets table
+        setsSubscription = supabase
+          .channel(`public:sets`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "sets",
+            },
+            async (payload) => {
+              // When sets change, we need to find which workout_exercise and then which workout
+
+              const workoutExerciseId =
+                //@ts-expect-error
+                payload.new?.workout_exercise_id ||
+                //@ts-expect-error
+                payload.old?.workout_exercise_id;
+              if (workoutExerciseId) {
+                // First get the workout_exercise to find the workout_id
+                const { data: workoutExercise, error: weError } = await supabase
+                  .from("workout_exercises")
+                  .select("workout_id")
+                  .eq("id", workoutExerciseId)
+                  .single();
+
+                if (weError) {
+                  console.error("Error fetching workout_exercise:", weError);
+                  return;
+                }
+
+                if (workoutExercise?.workout_id) {
+                  try {
+                    const updatedWorkout = await refetchWorkout(
+                      workoutExercise.workout_id,
+                      user.id,
+                    );
+                    if (updatedWorkout) {
+                      setWorkouts((prev) =>
+                        prev.map((w) =>
+                          w.id === workoutExercise.workout_id
+                            ? (updatedWorkout as unknown as Workout)
+                            : w,
+                        ),
+                      );
+                    }
+                  } catch (err) {
+                    console.error(
+                      "Failed to refetch workout after set change:",
+                      err,
+                    );
+                  }
+                }
+              }
             },
           )
           .subscribe();
@@ -138,9 +430,12 @@ const ManageWorkouts = () => {
     fetchWorkouts();
 
     return () => {
-      if (subscription) supabase.removeChannel(subscription);
+      if (workoutsSubscription) supabase.removeChannel(workoutsSubscription);
+      if (workoutExercisesSubscription)
+        supabase.removeChannel(workoutExercisesSubscription);
+      if (setsSubscription) supabase.removeChannel(setsSubscription);
     };
-  }, []);
+  }, [refetchWorkout]);
 
   const openModal = () => {
     setWorkoutToEdit(null);
@@ -199,8 +494,6 @@ const ManageWorkouts = () => {
 
       if (workoutError) throw workoutError;
 
-      setWorkouts((prev) => prev.filter((w) => w.id !== workoutToDelete.id));
-
       setIsConfirmModalOpen(false);
       setWorkoutToDelete(null);
     } catch (err) {
@@ -219,9 +512,14 @@ const ManageWorkouts = () => {
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
       <div className="flex items-center justify-between ">
-        <h2 className="text-orange-600 font-black text-2xl tracking-tight">
-          Manage workouts
-        </h2>
+        <div className=" flex items-center gap-1">
+          <div onClick={() => navigate("/dashboard")}>
+            <ArrowLeft size={18} />
+          </div>
+          <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">
+            Manage workouts
+          </h2>
+        </div>
         <Button
           onClick={openModal}
           className="hover:bg-orange-700 bg-orange-600 text-foreground"

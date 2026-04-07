@@ -37,15 +37,16 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   closeModal,
   workoutToEdit,
 }) => {
+  console.log("🚀 ~ CreateWorkoutModal ~ workoutToEdit:", workoutToEdit);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workoutName, setWorkoutName] = useState("");
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[] | any[]>(
-    [],
-  );
+  const [workoutExercises, setWorkoutExercises] = useState<
+    WorkoutExercise[] | any[]
+  >([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingWorkout, setIsLoadingWorkout] = useState(false);
 
@@ -264,7 +265,12 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
     setWorkoutExercises(
       workoutExercises.map((we) =>
         we.exercise.folder === folder
-          ? { ...we, sets: we.sets.filter((_: any, index: number) => index !== setIndex) }
+          ? {
+              ...we,
+              sets: we.sets.filter(
+                (_: any, index: number) => index !== setIndex,
+              ),
+            }
           : we,
       ),
     );
@@ -431,14 +437,25 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
 
       if (!original) return [];
 
-      return original.sets.map((set: { weight: any; repType: string; reps: any; repRangeMin: any; repRangeMax: any; }, i: number) => ({
-        workout_exercise_id: ex.id,
-        set_number: i + 1,
-        weight: set.weight,
-        reps: set.repType === "reps" ? set.reps : null,
-        rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
-        rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
-      }));
+      return original.sets.map(
+        (
+          set: {
+            weight: any;
+            repType: string;
+            reps: any;
+            repRangeMin: any;
+            repRangeMax: any;
+          },
+          i: number,
+        ) => ({
+          workout_exercise_id: ex.id,
+          set_number: i + 1,
+          weight: set.weight,
+          reps: set.repType === "reps" ? set.reps : null,
+          rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
+          rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
+        }),
+      );
     });
 
     if (setsPayload.length > 0) {
@@ -503,7 +520,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={closeModal}
-        className="fixed inset-0 bg-black/20 z-40"
+        className="fixed inset-0 bg-black/20 z-[100]"
       />
 
       <motion.div
@@ -511,7 +528,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl"
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-full max-w-6xl"
       >
         <div className="bg-white dark:bg-[#2d2d2d] lg:rounded-3xl rounded-0 shadow-xl p-4 lg:m-4 m-0 lg:h-full h-dvh">
           <div className="flex flex-col md:flex-row gap-4">
@@ -607,7 +624,9 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                       onClick={handleSaveWorkout}
                       className="w-full bg-orange-600 text-foreground hover:bg-orange-600 font-semibold rounded-lg transition-colors mt-4"
                     >
-                      Create Workout ({selectedExercises.length} exercises)
+                      {workoutToEdit
+                        ? `Update Workout`
+                        : `Create Workout (${selectedExercises.length} exercises)`}
                     </Button>
                   </div>
                 )}
