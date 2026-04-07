@@ -70,13 +70,13 @@ const WorkoutCard = ({
                 openStartWorkoutModal(workout);
               }
             }}
-            className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
+            className="rounded-full p-2 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
             whileHover={{ scale: 1.1 }}
           >
-            <Play className="stroke-background fill-background" size={18} />
+            <Play className="stroke-background fill-background" size={12} />
           </motion.div>
         ) : (
           <AnimatePresence>

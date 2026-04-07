@@ -40,7 +40,7 @@ export interface Workout {
   name: string;
   created_at: string;
   exercises: WorkoutExercise[];
-  workout_exercises?: WorkoutExercise[];
+  workout_exercises: WorkoutExercise[];
 }
 
 

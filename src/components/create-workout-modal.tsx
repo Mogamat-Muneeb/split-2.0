@@ -37,7 +37,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
   closeModal,
   workoutToEdit,
 }) => {
-  console.log("🚀 ~ CreateWorkoutModal ~ workoutToEdit:", workoutToEdit);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
