@@ -121,7 +121,7 @@ const Home = () => {
   return (
     <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
       <div>
-        <h2 className="text-orange-600 font-black text-2xl tracking-tight">
+        <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">
           Workouts
         </h2>
         <p className="text-sm">Choose a routine or start fresh.</p>
@@ -271,16 +271,17 @@ const Home = () => {
                         </h3>
 
                         <h3 className="flex lg:hidden font-bold tracking-tight truncate">
-                          {workout.name.length > 15
+                          {workout.name.length > 10
                             ? `${workout.name.slice(0, 15)}...`
                             : workout.name}
                         </h3>
 
                         <div className="mt-3 flex items-center text-sm">
                           <p className="mr-1 whitespace-nowrap">
-                            {workout.workout_exercises?.length} Exercises •
+                            {workout.workout_exercises?.length} Exercises
+                            {/* • */}
                           </p>
-                          <p className="truncate">
+                          {/* <p className="truncate">
                             {workout?.workout_exercises &&
                               workout?.workout_exercises
                                 .slice(0, 1)
@@ -290,7 +291,7 @@ const Home = () => {
                             {workout?.workout_exercises &&
                               workout?.workout_exercises?.length > 1 &&
                               " ..."}
-                          </p>
+                          </p> */}
                         </div>
                       </div>
                       <div>
