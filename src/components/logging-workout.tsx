@@ -610,21 +610,42 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
                           <div className="flex items-center justify-center w-full">
                             PREV
                           </div>
-                          {showWeight && (
-                            <div className="flex items-center justify-center w-full">
-                              KG
-                            </div>
-                          )}
-                          <div className="flex flex-col items-center justify-center w-full">
-                            <Select
-                              value={exerciseRepTypes[exercise.id] || "reps"}
-                              onValueChange={(value: "reps" | "repRange") =>
-                                handleRepTypeChange(exercise.id, value)
-                              }
-                            >
-                              <SelectTrigger
-                                size="sm"
-                                className="border-0 w-auto p-1 !bg-transparent"
+
+                          <div className="flex items-center justify-center w-full">
+                            {editingSet?.exerciseId === exercise.id &&
+                            editingSet?.setId === set.id &&
+                            editingSet?.field === "weight" ? (
+                              <Input
+                                ref={inputRef}
+                                type="number"
+                                value={editingSet.value}
+                                onChange={(e) =>
+                                  setEditingSet({
+                                    ...editingSet,
+                                    value: e.target.value,
+                                  })
+                                }
+                                onKeyDown={(e) =>
+                                  handleKeyPress(
+                                    e,
+                                    exercise.id,
+                                    set.id,
+                                    "weight",
+                                  )
+                                }
+                                onBlur={handleBlur}
+                              />
+                            ) : (
+                              <div
+                                onClick={() =>
+                                  startEditing(
+                                    exercise.id,
+                                    set.id,
+                                    "weight",
+                                    set.weight,
+                                  )
+                                }
+                                className="flex items-center file:text-foreground placeholder:text-muted-foreground selection:bg-primary border-0 selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-xs"
                               >
                                 <SelectValue />
                               </SelectTrigger>
