@@ -557,7 +557,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                           <div className="flex items-center justify-center w-full">
                             -
                           </div>
-                          {/* Editable Weight */}
+
                           <div className="flex items-center justify-center w-full">
                             {editingSet?.exerciseId === exercise.id &&
                             editingSet?.setId === set.id &&
