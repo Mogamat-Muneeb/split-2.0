@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ActiveWorkout } from "@/lib/types";
+import type { ActiveWorkout, Workout } from "@/lib/types";
 import { useLogWorkout } from "@/provider/LogWorkoutProvider";
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import type { User } from "@supabase/supabase-js";
 
 interface LoggingWorkoutProps {
   activeWorkout: ActiveWorkout | null;
@@ -58,6 +59,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
     [exerciseId: string]: "reps" | "repRange";
   }>({});
 
+  
+  const [user, setUser] = useState<User | null>(null);
+
+  const [workoutName, setWorkoutName] = useState<string>("")
+  const [isNewWorkout, setIsNewWorkout] = useState<string>("")
   const [isResting, setIsResting] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState(0);
   const restIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -813,7 +819,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({
 
               {shouldShowWorkoutDetails() && (
                 <>
-                  {activeWorkout?.exercises.length < 1 && (
+                  {activeWorkout?.exercises?.length < 1 && (
                     <div className="lg:flex hidden w-full">
                       <div className="bg-accent rounded-xl px-3 py-4 w-full">
                         <p className="font-bold text-base tracking-tight">

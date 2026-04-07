@@ -38,7 +38,7 @@ const Dashboard = () => {
         <FloatingNav />
         <Navbar />
 
-        <div className="px-3 py-3 w-full overflow-auto">
+        <div className="px-3 py-3 mb-20 w-full overflow-auto">
           <Outlet />
         </div>
       </div>
