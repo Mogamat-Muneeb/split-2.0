@@ -62,14 +62,6 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     JSON.parse(localStorage.getItem("miniMize") || "false"),
   );
 
-  useEffect(() => {
-    if (activeWorkout) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMiniMize(true);
-      localStorage.setItem("miniMize", JSON.stringify(true));
-    }
-  }, [activeWorkout]);
-
   const handleMinimize = () => {
     setMiniMize((prev) => {
       const next = !prev;
@@ -77,8 +69,9 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
 
       if (!next && activeWorkout) {
         setForceOpenWorkoutModal(true);
-
         setStartWorkoutModalOpen(true);
+      } else if (next) {
+        setStartWorkoutModalOpen(false);
       }
 
       return next;
@@ -540,6 +533,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     setElapsedTime(0);
     setForceOpenWorkoutModal(false);
     setStartWorkoutModalOpen(false);
+    setMiniMize(false);
+    localStorage.setItem("miniMize", JSON.stringify(false));
   };
 
   // RESET WORKOUT - WITH USER VERIFICATION
@@ -564,6 +559,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     setElapsedTime(0);
     setForceOpenWorkoutModal(false);
     setStartWorkoutModalOpen(false);
+    setMiniMize(false);
+    localStorage.setItem("miniMize", JSON.stringify(false));
   };
 
   // ADD EXERCISE - WITH USER VERIFICATION (optional but good practice)
@@ -810,6 +807,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
 
   const openStartWorkoutModal = (workout?: Workout | ActiveWorkout) => {
     setSelectedWorkout(workout || null);
+    setMiniMize(false);
+    localStorage.setItem("miniMize", JSON.stringify(false));
     setStartWorkoutModalOpen(true);
   };
 
@@ -821,8 +820,11 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   const resumeWorkout = () => {
     if (!activeWorkout) return;
 
+    setMiniMize(false);
+    localStorage.setItem("miniMize", JSON.stringify(false));
     setForceOpenWorkoutModal(true);
     setSelectedWorkout(activeWorkout);
+    setStartWorkoutModalOpen(true);
   };
 
   return (

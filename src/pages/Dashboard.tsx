@@ -51,7 +51,7 @@ const Dashboard = () => {
         isEmptyWorkout={!selectedWorkout}
       />
 
-      {miniMize && activeWorkout && (
+      {miniMize && activeWorkout && !startWorkoutModalOpen && (
         <div className="fixed lg:bottom-1 bottom-[6%] left-1/2 -translate-x-1/2 -translate-y-1/2 lg:w-[20%] w-[93%]  rounded-4xl shadow-2xl bg-[#FAF6FA]  dark:bg-[#2d2d2d] p-3 z-50 flex flex-col items-start">
           <div className="flex justify-between w-full items-center">
             <div className="w-full">

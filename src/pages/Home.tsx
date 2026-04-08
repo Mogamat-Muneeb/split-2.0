@@ -149,8 +149,9 @@ const Home = () => {
           </h2>
           <p className="lg:text-sm text-xs">Choose a routine or start fresh.</p>
         </div>
+
         <div>
-          <div className="grid lg:grid-cols-2 grid-cols-1 gap-4">
+          <div className="flex w-full flex-col  gap-3">
             <motion.div
               className="flex justify-between items-center bg-[#3D348B] h-full rounded-4xl p-5 lg:col-span-3"
               whileHover={{ scale: 1.02 }}
@@ -175,58 +176,68 @@ const Home = () => {
                 <Play className="stroke-background fill-background" size={18} />
               </motion.div>
             </motion.div>
-            <motion.div
-              className="flex justify-between items-center bg-orange-600 h-full rounded-4xl p-5"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <div>
-                <h2 className="lg:text-lg text-base tracking-tight font-bold text-white dark:text-accent-foreground">
-                  Empty Workout
-                </h2>
-                <p className="lg:text-sm text-xs text-white dark:text-accent-foreground">
-                  Build your session as you go
-                </p>
-              </div>
+
+            <div className="flex lg:flex-row flex-col  w-full gap-3">
               <motion.div
-                onClick={() => {
-                  openStartWorkoutModal();
-                  setMiniMize(false);
-                  localStorage.setItem("miniMize", JSON.stringify(false));
-                }}
-                className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground"
-                whileHover={{ scale: 1.1 }}
-                transition={{ type: "spring", stiffness: 400 }}
-              >
-                <Play className="stroke-background fill-background" size={18} />
-              </motion.div>
-            </motion.div>
-            <Link to={"/dashboard/manage-workouts"}>
-              <motion.div
-                className="flex justify-between items-center gap-2 bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl p-5"
+                className="flex justify-between items-center bg-orange-600 h-full w-full rounded-4xl p-5"
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 <div>
-                  <h2 className="lg:text-lg text-base font-bold tracking-tight">
-                    Manage Workout
+                  <h2 className="lg:text-lg text-base tracking-tight font-bold text-white dark:text-accent-foreground">
+                    Empty Workout
                   </h2>
-                  <p className="lg:text-sm text-xs">Edit your saved workouts</p>
+                  <p className="lg:text-sm text-xs text-white dark:text-accent-foreground">
+                    Build your session as you go
+                  </p>
                 </div>
                 <motion.div
-                  className="rounded-2xl p-3 w-fit dark:bg-white bg-accent-foreground"
+                  onClick={() => {
+                    openStartWorkoutModal();
+                    setMiniMize(false);
+                    localStorage.setItem("miniMize", JSON.stringify(false));
+                  }}
+                  className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground"
                   whileHover={{ scale: 1.1 }}
                   transition={{ type: "spring", stiffness: 400 }}
                 >
-                  <Dumbbell
-                    className="fill-background stroke-background"
+                  <Play
+                    className="stroke-background fill-background"
                     size={18}
                   />
                 </motion.div>
               </motion.div>
-            </Link>
+
+              <Link to={"/dashboard/manage-workouts"} className="w-full">
+                <motion.div
+                  className="flex justify-between items-center gap-2  bg-[#FAF6FA] dark:bg-[#2d2d2d] h-full rounded-4xl p-5 "
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div>
+                    <h2 className="lg:text-lg text-base font-bold tracking-tight">
+                      Manage Workout
+                    </h2>
+                    <p className="lg:text-sm text-xs">
+                      Edit your saved workouts
+                    </p>
+                  </div>
+                  <motion.div
+                    className="rounded-2xl p-3 w-fit dark:bg-white bg-accent-foreground"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                  >
+                    <Dumbbell
+                      className="fill-background stroke-background"
+                      size={18}
+                    />
+                  </motion.div>
+                </motion.div>
+              </Link>
+            </div>
           </div>
         </div>
+
         <div className="flex flex-col gap-5">
           <div className="flex w-full justify-between items-center">
             <h2 className="font-bold tracking-tight">My workouts</h2>
@@ -239,6 +250,7 @@ const Home = () => {
               </p>
             )}
           </div>
+
           <div className="mt-4 flex items-center w-full">
             <div className="w-full">
               {/* Loading State */}

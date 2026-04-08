@@ -49,7 +49,7 @@ const SortableSetItem: React.FC<{
       className={`flex flex-col p-3 ${backgroundColor}`}
     >
       <div className="grid grid-cols-4 px-2 items-center w-full  text-xs tracking-tight gap-2">
-        <div className="flex items-center gap-2  justify-start">
+        <div className="flex items-center gap-1  justify-start">
           <div {...listeners} className="cursor-grab active:cursor-grabbing">
             <GripVertical size={14} />
           </div>

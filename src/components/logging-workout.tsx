@@ -506,9 +506,9 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                       )}
                     </div>
                     <div className="">
-                      <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] px-2 items-center w-full mb-4 gap-2 text-xs tracking-tight">
-                        <div className="w-fit">SET</div>
-                        <div className="flex items-center justify-center w-full">
+                      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] px-4 items-center w-full mb-4 gap-2 text-xs tracking-tight">
+                        <div className="flex items-center justify-center w-full ">SET</div>
+                        <div className="flex items-center justify-center w-full ">
                           PREV
                         </div>
                         <div className="flex items-center justify-center w-full">
@@ -545,7 +545,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                       {exercise?.sets?.map((set, setIndex) => (
                         <div
                           key={setIndex}
-                          className={`grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 items-center text-sm p-4 group
+                          className={`grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 items-center text-sm p-4 group
                             ${
                               set.checked
                                 ? "bg-orange-700/30 "
@@ -555,7 +555,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                             }
                           `}
                         >
-                          <div className=" w-fit">
+                          <div className="w-full">
                             <Select
                               value={set.type || "Normal"}
                               onValueChange={(
@@ -570,9 +570,9 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                             >
                               <SelectTrigger
                                 size="sm"
-                                className="border-0 w-auto p-1 ring-0 bg-transparent! relative"
+                                className="border-0 p-1 ring-0 bg-transparent! relative"
                               >
-                                <div className="opacity-0! absolute!">
+                                <div className="hidden">
                                   <SelectValue />
                                 </div>
                                 <div className="flex items-center">
@@ -637,6 +637,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                               </SelectContent>
                             </Select>
                           </div>
+                          
                           <div className="flex items-center justify-center w-full">
                             -
                           </div>
