@@ -93,6 +93,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
             reps: set.reps,
             repRangeMin: set.rep_range_min,
             repRangeMax: set.rep_range_max,
+            type: set.type,
           })),
         }));
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -254,6 +255,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
         const newSet: Set = lastSet
           ? { ...lastSet }
           : { weight: 0, repType: "reps", reps: 0 };
+
+        if (!newSet.type) newSet.type = "Normal";
 
         return { ...we, sets: [...we.sets, newSet] };
       }),
@@ -453,6 +456,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
           reps: set.repType === "reps" ? set.reps : null,
           rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
           rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
+          type: set.type || "Normal",
         }),
       );
     });

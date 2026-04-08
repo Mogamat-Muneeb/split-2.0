@@ -555,7 +555,88 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                             }
                           `}
                         >
-                          <div className=" w-fit">{set.set_number}</div>
+                          <div className=" w-fit">
+                            <Select
+                              value={set.type || "Normal"}
+                              onValueChange={(
+                                value:
+                                  | "Warm Up"
+                                  | "Normal"
+                                  | "Failure"
+                                  | "Drop",
+                              ) => {
+                                updateSet(exercise.id, set.id, { type: value });
+                              }}
+                            >
+                              <SelectTrigger
+                                size="sm"
+                                className="border-0 w-auto p-1 ring-0 bg-transparent! relative"
+                              >
+                                <div className="opacity-0! absolute!">
+                                  <SelectValue />
+                                </div>
+                                <div className="flex items-center">
+                                  {set.type === "Warm Up" && (
+                                    <div className="text-yellow-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                      W
+                                    </div>
+                                  )}
+                                  {(!set.type || set.type === "Normal") && (
+                                    <div className="font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                      {set.set_number}
+                                    </div>
+                                  )}
+                                  {set.type === "Failure" && (
+                                    <div className="text-red-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                      F
+                                    </div>
+                                  )}
+                                  {set.type === "Drop" && (
+                                    <div className="text-blue-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                      D
+                                    </div>
+                                  )}
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>Set Type</SelectLabel>
+                                  <SelectItem value="Warm Up">
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-yellow-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                        W
+                                      </div>
+                                      <p>Warm Up</p>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="Normal">
+                                    <div className="flex items-center gap-2">
+                                      <div className="font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                        {set.set_number}
+                                      </div>
+                                      <p>Normal</p>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="Failure">
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-red-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                        F
+                                      </div>
+                                      <p>Failure</p>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="Drop">
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-blue-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                                        D
+                                      </div>
+                                      <p>Drop</p>
+                                    </div>
+                                  </SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div className="flex items-center justify-center w-full">
                             -
                           </div>

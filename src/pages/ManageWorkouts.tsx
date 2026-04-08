@@ -107,7 +107,8 @@ const ManageWorkouts = () => {
         weight,
         reps,
         rep_range_min,
-        rep_range_max
+        rep_range_max,
+        type
       `,
       )
       .in("workout_exercise_id", exerciseIds)
@@ -194,7 +195,8 @@ const ManageWorkouts = () => {
           weight,
           reps,
           rep_range_min,
-          rep_range_max
+          rep_range_max,
+          type
         `,
           )
           .in("workout_exercise_id", exerciseIds)

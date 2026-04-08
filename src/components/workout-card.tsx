@@ -1,8 +1,7 @@
 import type { Workout, ActiveWorkout } from "@/lib/types";
-import { motion ,AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Play } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-
 
 interface WorkoutCardProps {
   workout: Workout;
@@ -12,7 +11,7 @@ interface WorkoutCardProps {
   activeWorkout: ActiveWorkout | null;
   openStartWorkoutModal: (workout?: Workout) => void;
   setMiniMize: (value: boolean) => void;
-  setViewAll: Dispatch<SetStateAction<boolean>>
+  setViewAll: Dispatch<SetStateAction<boolean>>;
 }
 
 const WorkoutCard = ({
@@ -23,7 +22,7 @@ const WorkoutCard = ({
   activeWorkout,
   openStartWorkoutModal,
   setMiniMize,
-  setViewAll
+  setViewAll,
 }: WorkoutCardProps) => {
   return (
     <motion.div

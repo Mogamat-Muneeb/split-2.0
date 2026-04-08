@@ -7,6 +7,16 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import type { Set } from "@/lib/types";
 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const SortableSetItem: React.FC<{
   set: Set;
   setIndex: number;
@@ -43,7 +53,76 @@ const SortableSetItem: React.FC<{
           <div {...listeners} className="cursor-grab active:cursor-grabbing">
             <GripVertical size={14} />
           </div>
-          <div className="w-fit flex flex-col gap-2 font-medium">{setIndex + 1}</div>
+
+          <Select
+            value={set.type || "Normal"}
+            onValueChange={(
+              value: "Warm Up" | "Normal" | "Failure" | "Drop",
+            ) => {
+              updateSet(folder, setIndex, { type: value });
+            }}
+          >
+            <SelectTrigger
+              size="sm"
+              className="border-0 w-auto p-1 ring-0 bg-transparent! relative"
+            >
+              <div className="opacity-0! absolute!">
+                <SelectValue />
+              </div>
+
+              <div className="flex items-center">
+                {set.type === "Warm Up" && (
+                  <div className="text-yellow-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    W
+                  </div>
+                )}
+                {set.type === "Normal" && (
+                  <div className="font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    {setIndex + 1}
+                  </div>
+                )}
+                {set.type === "Failure" && (
+                  <div className="text-red-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    F
+                  </div>
+                )}
+                {set.type === "Drop" && (
+                  <div className="text-blue-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    D
+                  </div>
+                )}
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Set Type</SelectLabel>
+                <SelectItem value="Warm Up">
+                  <div className="text-yellow-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    W
+                  </div>
+                  <p>Warm Up</p>
+                </SelectItem>
+                <SelectItem value={`Normal`}>
+                  <div className=" font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    {setIndex + 1}
+                  </div>
+                  <p>Normal</p>
+                </SelectItem>
+                <SelectItem value="Failure">
+                  <div className="text-red-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    F
+                  </div>
+                  <p>Failure</p>
+                </SelectItem>
+                <SelectItem value="Drop">
+                  <div className="text-blue-600! font-extrabold bg-accent h-7 w-7 flex justify-center items-center rounded">
+                    D
+                  </div>
+                  <p>Drop</p>
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className=" flex flex-col gap-2 ">

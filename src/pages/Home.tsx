@@ -63,7 +63,8 @@ const Home = () => {
                 weight,
                 reps,
                 rep_range_min,
-                rep_range_max
+                rep_range_max,
+                type
               )
             )
           `,
@@ -229,12 +230,14 @@ const Home = () => {
         <div className="flex flex-col gap-5">
           <div className="flex w-full justify-between items-center">
             <h2 className="font-bold tracking-tight">My workouts</h2>
-            <p
-              className="text-orange-600 lg:text-sm text-xs cursor-pointer"
-              onClick={() => setViewAll(!viewAll)}
-            >
-              View all
-            </p>
+            {workouts.length > 1 && (
+              <p
+                className="text-orange-600 lg:text-sm text-xs cursor-pointer"
+                onClick={() => setViewAll(!viewAll)}
+              >
+                View all
+              </p>
+            )}
           </div>
           <div className="mt-4 flex items-center w-full">
             <div className="w-full">

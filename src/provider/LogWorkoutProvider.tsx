@@ -118,7 +118,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
               rep_range_min,
               rep_range_max,
               weight,
-              checked
+              checked,
+                 type
             )
           )
         `,
@@ -149,6 +150,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
                 rep_range_max: set.rep_range_max,
                 weight: set.weight,
                 checked: set.checked,
+                type: set.type,
               })) || [],
         })) || [];
 
@@ -435,6 +437,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
               rep_range_max: set.rep_range_max,
               weight: set.weight,
               checked: false,
+              type: set.type,
             })),
           );
         }
@@ -464,7 +467,9 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
             rep_range_min,
             rep_range_max,
             weight,
-            checked
+            checked,
+            type
+
           )
         )
       `,
@@ -496,6 +501,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
               rep_range_max: set.rep_range_max,
               weight: set.weight,
               checked: set.checked,
+              type: set.type || "Normal",
             })) || [],
       })) || [];
 
@@ -527,7 +533,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         ended_at: new Date(),
       })
       .eq("id", activeWorkout.id)
-      .eq("user_id", user.id); 
+      .eq("user_id", user.id);
 
     toast.success("Well done buddy ✅!");
     setActiveWorkout(null);
@@ -585,6 +591,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           rep_range_min: 8,
           rep_range_max: 12,
           checked: false,
+          type: "Normal",
         }
       : {
           weight: 0,
@@ -592,6 +599,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           rep_range_min: null,
           rep_range_max: null,
           checked: false,
+          type: "Normal",
         };
 
     const { data: newExercise, error } = await supabase
@@ -625,6 +633,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
           rep_range_min: defaultSet.rep_range_min,
           rep_range_max: defaultSet.rep_range_max,
           checked: false,
+          type: defaultSet.type,
         },
       ])
       .select();
@@ -670,6 +679,7 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         rep_range_min: newSet.rep_range_min,
         rep_range_max: newSet.rep_range_max,
         checked: false,
+        type: newSet.type || "Normal",
       })
       .select()
       .single();

@@ -8,11 +8,6 @@ export type UserProfile = {
   updated_at: string;
 };
 
-
-
-
-
-
 export interface Set {
   id: string;
   set_number: number;
@@ -20,7 +15,8 @@ export interface Set {
   reps?: number;
   rep_range_min?: number;
   rep_range_max?: number;
-  checked?: boolean
+  checked?: boolean;
+  type?: "Warm Up" | "Normal" | "Failure" | "Drop";
 }
 
 export interface WorkoutExercise {
@@ -42,7 +38,6 @@ export interface Workout {
   exercises: WorkoutExercise[];
   workout_exercises: WorkoutExercise[];
 }
-
 
 export interface ActiveWorkout {
   id?: string;
@@ -70,6 +65,7 @@ export interface Set {
   reps?: number;
   repRangeMin?: number;
   repRangeMax?: number;
+  type?: "Warm Up" | "Normal" | "Failure" | "Drop";
 }
 
 export interface WorkoutExercise {
