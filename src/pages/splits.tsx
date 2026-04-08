@@ -2,6 +2,10 @@
 import { useState, useEffect } from "react";
 
 import supabase from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import CreatePlan from "@/components/create-plan";
+import { AnimatePresence } from "framer-motion";
 
 interface Set {
   id: string;
@@ -31,6 +35,15 @@ interface Workout {
 
 const Splits = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
 
   useEffect(() => {
     let subscription: any;
@@ -119,13 +132,31 @@ const Splits = () => {
   }, []);
 
   return (
-    <div className="w-full ">
-      <div className="flex items-center justify-between w-full">
-        <div className="font-bold text-lg">Splits</div>
-      </div>
+    <>
+      <AnimatePresence>
+        {isModalOpen && <CreatePlan closeModal={closeModal} />}
+      </AnimatePresence>
 
-      <div className="mt-4 flex items-center  w-full"></div>
-    </div>
+      <div className="max-w-[1440px] mx-auto pt-10 space-y-10">
+        <div className="flex items-center justify-between w-full">
+          <div>
+            <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">
+              Splits
+            </h2>
+            <p className="lg:text-sm text-xs">Create your own splits.</p>
+          </div>
+          <div>
+            <Button
+              onClick={openModal}
+              className="hover:bg-orange-700 bg-orange-600 text-foreground"
+            >
+              Create Split
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center  w-full"></div>
+      </div>
+    </>
   );
 };
 
