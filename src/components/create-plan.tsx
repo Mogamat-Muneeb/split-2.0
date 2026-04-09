@@ -1,7 +1,7 @@
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
 import type { Exercise } from "@/lib/types";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "./ui/input";
 
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
@@ -387,6 +387,12 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showMobileLibrary, setShowMobileLibrary] = useState(false);
+  const mobileStackRef = useRef<HTMLDivElement | null>(null);
+  const mobileDragStateRef = useRef<{
+    startY: number;
+    startRatio: number;
+  } | null>(null);
+  const [mobilePaneRatio, setMobilePaneRatio] = useState(0.4);
 
   const muscleMix = useMemo(
     () => computeMuscleMix(days.flatMap((d) => d.exercises)),
@@ -455,6 +461,43 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
   const addExerciseFromLibrary = (exercise: Exercise) => {
     addExerciseToActiveDay(exercise);
     if (isMobileView) setShowMobileLibrary(false);
+  };
+
+  const beginMobileResize = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ): void => {
+    if (!isMobileView) return;
+    const container = mobileStackRef.current;
+    if (!container) return;
+
+    event.preventDefault();
+
+    const startY = event.clientY;
+    const startRatio = mobilePaneRatio;
+    mobileDragStateRef.current = { startY, startRatio };
+
+    const handleMove = (e: PointerEvent) => {
+      const state = mobileDragStateRef.current;
+      if (!state || !container) return;
+      const height = container.clientHeight || 1;
+      const deltaY = e.clientY - state.startY;
+      const nextRatio = Math.min(
+        0.8,
+        Math.max(0.2, state.startRatio + deltaY / height),
+      );
+      setMobilePaneRatio(nextRatio);
+    };
+
+    const handleUp = () => {
+      mobileDragStateRef.current = null;
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
   };
 
   const addSetToExercise = (exerciseId: string) => {
@@ -858,18 +901,39 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
             )}
           </div>
 
+          <div
+            className="lg:hidden flex items-center justify-center py-1 my-1"
+            onPointerDown={beginMobileResize}
+          >
+            <div className="h-1 w-16 rounded-full bg-border/70" />
+          </div>
+
+
           <DndContext
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="lg:grid flex flex-col gap-4 flex-1 min-h-0 overflow-hidden md:grid-cols-[1fr_3fr_1fr]">
+            <div
+              ref={mobileStackRef}
+              className="lg:grid flex flex-col gap-4 flex-1 min-h-0 overflow-hidden md:grid-cols-[1fr_3fr_1fr]"
+            >
               {/* 📅 DAYS LIST */}
               <SortableContext
                 items={days.map((d) => d.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="space-y-2 overflow-y-auto lg:h-full h-fit">
+                <div
+                  className="space-y-2 overflow-y-auto lg:h-full h-fit"
+                  style={
+                    isMobileView
+                      ? {
+                          flexBasis: `${mobilePaneRatio * 100}%`,
+                          minHeight: 0,
+                        }
+                      : undefined
+                  }
+                >
                   {days.map((day, index) => (
                     <SortableDayCard
                       key={day.id}
@@ -897,8 +961,25 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
                 </div>
               </SortableContext>
 
+              <div
+                className="lg:hidden flex items-center justify-center py-1 my-1"
+                onPointerDown={beginMobileResize}
+              >
+                <div className="h-1 w-16 rounded-full bg-border/70" />
+              </div>
+
               {/* 🏋️ ACTIVE DAY BUILDER */}
-              <div className="lg:rounded-xl lg:p-3 p-0 overflow-y-auto min-h-0 flex flex-col">
+              <div
+                className="lg:rounded-xl lg:p-3 p-0 overflow-y-auto min-h-0 flex flex-col"
+                style={
+                  isMobileView
+                    ? {
+                        flexBasis: `${(1 - mobilePaneRatio) * 100}%`,
+                        minHeight: 0,
+                      }
+                    : undefined
+                }
+              >
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-sm font-semibold text-muted-foreground">
                     {`Day ${days.findIndex((d) => d.id === activeDayId) + 1}`}
@@ -951,6 +1032,8 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
                     className="bg-white dark:bg-neutral-700 w-fit min-w-[140px]"
                   />
                 </div>
+
+                
 
                 <SortableContext
                   items={activeDay?.exercises.map((e) => e.id) || []}
