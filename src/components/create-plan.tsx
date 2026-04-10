@@ -6,6 +6,7 @@ import { Input } from "./ui/input";
 
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import supabase from "@/lib/supabase";
 
 import {
   SortableContext,
@@ -27,20 +28,19 @@ import {
 } from "@/components/ui/select";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
+import { toast } from "sonner";
+import {
+  FALLBACK_MUSCLE_COLORS,
+  MUSCLE_COLOR_MAP,
+  WEEKDAYS,
+  type Split,
+} from "@/lib/utils";
 
 interface CreatePlanProps {
   closeModal: () => void;
+  existingSplitId?: string;
+  existingSplitData?: Split | null;
 }
-
-const WEEKDAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
 
 type Day = {
   id: string;
@@ -68,49 +68,6 @@ type PlanExercise = {
   restTimer: string;
   sets: PlanSet[];
 };
-
-/** Lowercase keys → stable brand colors for muscle focus + exercise icons */
-const MUSCLE_COLOR_MAP: Record<string, string> = {
-  chest: "#e11d48",
-  pectoralis: "#e11d48",
-  shoulders: "#7c3aed",
-  delts: "#7c3aed",
-  deltoids: "#7c3aed",
-  traps: "#9333ea",
-  trapezius: "#9333ea",
-  lats: "#2563eb",
-  back: "#1d4ed8",
-  "upper back": "#1e40af",
-  "lower back": "#1e3a8a",
-  "middle back": "#2563eb",
-  biceps: "#ea580c",
-  triceps: "#ca8a04",
-  forearms: "#65a30d",
-  quadriceps: "#059669",
-  quads: "#059669",
-  hamstrings: "#0d9488",
-  glutes: "#db2777",
-  calves: "#4f46e5",
-  abdominals: "#0891b2",
-  abs: "#0891b2",
-  obliques: "#c026d3",
-  neck: "#64748b",
-  abductors: "#0f766e",
-  adductors: "#115e59",
-  cardio: "#475569",
-  full: "#334155",
-  other: "#64748b",
-};
-
-const FALLBACK_MUSCLE_COLORS = [
-  "#6366f1",
-  "#8b5cf6",
-  "#ec4899",
-  "#14b8a6",
-  "#f59e0b",
-  "#10b981",
-  "#3b82f6",
-];
 
 function hashToIndex(str: string, mod: number): number {
   let h = 0;
@@ -373,7 +330,11 @@ function SortableDayCard({
   );
 }
 
-const CreatePlan = ({ closeModal }: CreatePlanProps) => {
+const CreatePlan = ({
+  closeModal,
+  existingSplitId,
+  existingSplitData,
+}: CreatePlanProps) => {
   const [splitName, setSplitName] = useState("");
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -402,7 +363,7 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
   const splitStats = useMemo(() => computeSplitStats(days), [days]);
 
   const createPlanExercise = (exercise: Exercise): PlanExercise => ({
-    id: `${exercise.folder}-${crypto.randomUUID()}`,
+    id: exercise.folder,
     exercise,
     notes: "",
     restTimer: "off",
@@ -413,6 +374,40 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
   useEffect(() => {
     getFoldersAndContents().then(({ exercises }) => setExercises(exercises));
   }, []);
+
+  useEffect(() => {
+    if (existingSplitData) {
+      setSplitName(existingSplitData.name);
+      setDifficulty(existingSplitData.difficulty);
+
+      // Transform the split days back to your component's Day format
+      const transformedDays = existingSplitData.days.map((day, idx) => ({
+        id: `day-${idx + 1}`,
+        name: day.name || `Day ${idx + 1}`,
+        weekday: (day.weekday as any) || "",
+        exercises: day.exercises.map((ex) => ({
+          id: ex.exercise_id,
+          exercise: {
+            folder: ex.exercise_id,
+            jsonContents: [{ content: { name: ex.name } }],
+            images: [],
+          } as Exercise,
+          notes: ex.notes || "",
+          restTimer: ex.rest_timer || "off",
+          sets: ex.sets.map((set) => ({
+            weight: set.weight,
+            repType: set.rep_type,
+            reps: set.reps,
+            repRangeMin: set.rep_range_min,
+            repRangeMax: set.rep_range_max,
+            type: set.type,
+          })),
+        })),
+      }));
+
+      setDays(transformedDays);
+    }
+  }, [existingSplitData]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -446,6 +441,16 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
 
   // ➕ ADD EXERCISE (BUTTON)
   const addExerciseToActiveDay = (exercise: Exercise) => {
+    // Check if exercise already exists in the active day
+    const alreadyExists = days
+      .find((d) => d.id === activeDayId)
+      ?.exercises.some((e) => e.id === exercise.folder);
+
+    if (alreadyExists) {
+      toast.error("Exercise already added to this day");
+      return;
+    }
+
     setDays((prev) =>
       prev.map((day) =>
         day.id === activeDayId
@@ -636,14 +641,241 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
     );
   };
 
-  // 💾 SAVE
-  const handleSave = () => {
-    const payload = {
-      name: splitName,
-      days,
-    };
+  // // 💾 SAVE
+  // const handleSave = () => {
+  //   const payload = {
+  //     name: splitName,
+  //     days,
+  //   };
 
-    console.log("SPLIT SAVE:", payload);
+  //   console.log("SPLIT SAVE:", payload);
+  // };
+
+  // Enhanced version with update support
+  const handleSave = async () => {
+    if (!splitName.trim()) {
+      toast.error("Please enter a split name");
+      return;
+    }
+
+    if (days.length === 0) {
+      toast.error("Please add at least one day to your split");
+      return;
+    }
+
+    const hasExercises = days.some((day) => day.exercises.length > 0);
+    if (!hasExercises) {
+      toast.error("Please add at least one exercise to your split");
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("You must be logged in to save a split");
+        return;
+      }
+
+      // Check if we're editing an existing split (you'll need to pass splitId as prop)
+      const isEditing = !!existingSplitId; // Add this as a prop to your component
+
+      if (isEditing) {
+        // UPDATE EXISTING SPLIT
+
+        // 1. Update split metadata
+        const { error: splitError } = await supabase
+          .from("splits")
+          .update({
+            name: splitName,
+            difficulty: difficulty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingSplitId)
+          .eq("user_id", user.id);
+
+        if (splitError) throw splitError;
+
+        // 2. Delete existing days, exercises, and sets (cascade will handle related tables)
+        const { error: deleteError } = await supabase
+          .from("split_days")
+          .delete()
+          .eq("split_id", existingSplitId);
+
+        if (deleteError) throw deleteError;
+
+        // 3. Re-insert everything with the new data
+        for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+          const day = days[dayIndex];
+
+          const { data: splitDay, error: dayError } = await supabase
+            .from("split_days")
+            .insert({
+              split_id: existingSplitId,
+              user_id: user.id,
+              day_number: dayIndex + 1,
+              name: day.name,
+              weekday: day.weekday || null,
+              position: dayIndex,
+            })
+            .select()
+            .single();
+
+          if (dayError) throw dayError;
+
+          for (
+            let exerciseIndex = 0;
+            exerciseIndex < day.exercises.length;
+            exerciseIndex++
+          ) {
+            const exercise = day.exercises[exerciseIndex];
+
+            const { data: splitDayExercise, error: exerciseError } =
+              await supabase
+                .from("split_day_exercises")
+                .insert({
+                  split_day_id: splitDay.id,
+                  user_id: user.id,
+                  exercise_id: exercise.exercise.folder,
+                  name:
+                    exercise.exercise.jsonContents?.[0]?.content?.name ||
+                    exercise.exercise.folder,
+                  notes: exercise.notes || null,
+                  rest_timer:
+                    exercise.restTimer === "off" ? null : exercise.restTimer,
+                  position: exerciseIndex,
+                })
+                .select()
+                .single();
+
+            if (exerciseError) throw exerciseError;
+
+            for (
+              let setIndex = 0;
+              setIndex < exercise.sets.length;
+              setIndex++
+            ) {
+              const set = exercise.sets[setIndex];
+
+              const { error: setError } = await supabase
+                .from("split_exercise_sets")
+                .insert({
+                  split_day_exercise_id: splitDayExercise.id,
+                  user_id: user.id,
+                  set_number: setIndex + 1,
+                  weight: set.weight || 0,
+                  rep_type: set.repType,
+                  reps: set.repType === "reps" ? set.reps || 0 : null,
+                  rep_range_min:
+                    set.repType === "repRange" ? set.repRangeMin || 0 : null,
+                  rep_range_max:
+                    set.repType === "repRange" ? set.repRangeMax || 0 : null,
+                  type: set.type,
+                });
+
+              if (setError) throw setError;
+            }
+          }
+        }
+
+        toast.success("Split updated successfully!");
+      } else {
+        // CREATE NEW SPLIT (original code)
+        const { data: split, error: splitError } = await supabase
+          .from("splits")
+          .insert({
+            user_id: user.id,
+            name: splitName,
+            difficulty: difficulty,
+          })
+          .select()
+          .single();
+
+        if (splitError) throw splitError;
+
+        for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+          const day = days[dayIndex];
+
+          const { data: splitDay, error: dayError } = await supabase
+            .from("split_days")
+            .insert({
+              split_id: split.id,
+              user_id: user.id,
+              day_number: dayIndex + 1,
+              name: day.name,
+              weekday: day.weekday || null,
+              position: dayIndex,
+            })
+            .select()
+            .single();
+
+          if (dayError) throw dayError;
+
+          for (
+            let exerciseIndex = 0;
+            exerciseIndex < day.exercises.length;
+            exerciseIndex++
+          ) {
+            const exercise = day.exercises[exerciseIndex];
+
+            const { data: splitDayExercise, error: exerciseError } =
+              await supabase
+                .from("split_day_exercises")
+                .insert({
+                  split_day_id: splitDay.id,
+                  user_id: user.id,
+                  exercise_id: exercise.exercise.folder,
+                  name:
+                    exercise.exercise.jsonContents?.[0]?.content?.name ||
+                    exercise.exercise.folder,
+                  notes: exercise.notes || null,
+                  rest_timer:
+                    exercise.restTimer === "off" ? null : exercise.restTimer,
+                  position: exerciseIndex,
+                })
+                .select()
+                .single();
+
+            if (exerciseError) throw exerciseError;
+
+            for (
+              let setIndex = 0;
+              setIndex < exercise.sets.length;
+              setIndex++
+            ) {
+              const set = exercise.sets[setIndex];
+
+              const { error: setError } = await supabase
+                .from("split_exercise_sets")
+                .insert({
+                  split_day_exercise_id: splitDayExercise.id,
+                  user_id: user.id,
+                  set_number: setIndex + 1,
+                  weight: set.weight || 0,
+                  rep_type: set.repType,
+                  reps: set.repType === "reps" ? set.reps || 0 : null,
+                  rep_range_min:
+                    set.repType === "repRange" ? set.repRangeMin || 0 : null,
+                  rep_range_max:
+                    set.repType === "repRange" ? set.repRangeMax || 0 : null,
+                  type: set.type,
+                });
+
+              if (setError) throw setError;
+            }
+          }
+        }
+
+        toast.success("Split saved successfully!");
+      }
+
+      closeModal();
+    } catch (error) {
+      console.error("Error saving split:", error);
+      toast.error("Failed to save split. Please try again.");
+    }
   };
 
   // 🔥 DRAG
@@ -908,7 +1140,6 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
             <div className="h-1 w-16 rounded-full bg-border/70" />
           </div>
 
-
           <DndContext
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
@@ -1032,8 +1263,6 @@ const CreatePlan = ({ closeModal }: CreatePlanProps) => {
                     className="bg-white dark:bg-neutral-700 w-fit min-w-[140px]"
                   />
                 </div>
-
-                
 
                 <SortableContext
                   items={activeDay?.exercises.map((e) => e.id) || []}
