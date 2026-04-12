@@ -33,7 +33,7 @@ const WorkoutCard = ({
       transition={{ type: "spring", stiffness: 300 }}
     >
       <div className="w-full flex flex-col">
-        <h3 className="lg:flex hidden font-bold tracking-tight truncate">
+        <h3 className="lg:flex hidden font-bold tracking-tight truncate uppercase">
           {workout.name}
         </h3>
         <h3 className="flex lg:hidden font-bold lg:text-base text-sm tracking-tight truncate">

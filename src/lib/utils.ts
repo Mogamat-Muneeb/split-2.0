@@ -133,6 +133,7 @@ export interface Split {
   id: string;
   name: string;
   difficulty: "Beginner" | "Intermediate" | "Advanced" | "Expert";
+  is_active: boolean; 
   created_at: string;
   updated_at: string;
   days: SplitDay[];

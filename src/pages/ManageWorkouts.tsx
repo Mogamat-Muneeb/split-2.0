@@ -15,7 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { EllipsisVertical, AlertTriangle, ArrowLeft } from "lucide-react";
+import {
+  EllipsisVertical,
+  AlertTriangle,
+  ChevronLeft,
+  Trash2,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -516,7 +521,7 @@ const ManageWorkouts = () => {
       <div className="flex items-center justify-between ">
         <div className=" flex items-center gap-1">
           <div onClick={() => navigate("/dashboard")}>
-            <ArrowLeft size={18} />
+            <ChevronLeft size={20} />
           </div>
           <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">
             Manage workouts
@@ -541,13 +546,13 @@ const ManageWorkouts = () => {
 
       {/* Confirmation Modal */}
       <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-[#2d2d2d] rounded-3xl  border-0 shadow-xl p-6 m-4 ">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-[#2d2d2d] rounded-3xl  border-0 shadow-xl p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
               Confirm Deletion
             </DialogTitle>
-            <DialogDescription className="text-sm">
+            <DialogDescription className="text-sm text-start">
               Are you sure you want to delete the workout "
               {workoutToDelete?.name}"? This action cannot be undone and will
               permanently delete:
@@ -608,7 +613,7 @@ const ManageWorkouts = () => {
                 return (
                   <motion.div
                     key={workout.id}
-                    className="p-4 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl mb-2 flex items-start justify-between"
+                    className="p-5 bg-[#FAF6FA] dark:bg-[#2d2d2d] rounded-3xl mb-2 flex items-center justify-between"
                     onHoverStart={() =>
                       !isMobile && setHoveredWorkout(workout.id)
                     }
@@ -617,7 +622,7 @@ const ManageWorkouts = () => {
                     onClick={() => openEditModal(workout)}
                   >
                     <div className="w-full flex flex-col">
-                      <h3 className="lg:flex hidden font-bold tracking-tight truncate">
+                      <h3 className="lg:flex hidden font-bold tracking-tight truncate uppercase">
                         {workout.name}
                       </h3>
 
@@ -661,7 +666,7 @@ const ManageWorkouts = () => {
                               >
                                 <EllipsisVertical
                                   size={18}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer rotate-90"
                                 />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
@@ -674,7 +679,10 @@ const ManageWorkouts = () => {
                                       handleDeleteClick(workout, e)
                                     }
                                   >
-                                    Remove
+                                    <div className="flex items-center gap-3">
+                                      <Trash2 className="h-4 w-4" />
+                                      <p className="text-sm">Delete</p>
+                                    </div>
                                   </DropdownMenuItem>
                                 </DropdownMenuGroup>
                               </DropdownMenuContent>
@@ -701,7 +709,7 @@ const ManageWorkouts = () => {
                                   >
                                     <EllipsisVertical
                                       size={18}
-                                      className="cursor-pointer"
+                                      className="cursor-pointer rotate-90"
                                     />
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent
@@ -714,7 +722,10 @@ const ManageWorkouts = () => {
                                           handleDeleteClick(workout, e)
                                         }
                                       >
-                                        Remove
+                                        <div className="flex items-center gap-3">
+                                          <Trash2 className="h-4 w-4" />
+                                          <p className="text-sm">Delete</p>
+                                        </div>
                                       </DropdownMenuItem>
                                     </DropdownMenuGroup>
                                   </DropdownMenuContent>

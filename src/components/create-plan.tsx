@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
 import type { Exercise } from "@/lib/types";
 import { AnimatePresence, motion } from "framer-motion";
@@ -339,6 +340,7 @@ const CreatePlan = ({
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("Intermediate");
+  const [isActive, setIsActive] = useState(false);
 
   const [days, setDays] = useState<Day[]>([
     { id: "day-1", name: "Day 1", weekday: "", exercises: [] },
@@ -379,7 +381,7 @@ const CreatePlan = ({
     if (existingSplitData) {
       setSplitName(existingSplitData.name);
       setDifficulty(existingSplitData.difficulty);
-
+      setIsActive(existingSplitData.is_active || false);
       // Transform the split days back to your component's Day format
       const transformedDays = existingSplitData.days.map((day, idx) => ({
         id: `day-${idx + 1}`,
@@ -697,6 +699,15 @@ const CreatePlan = ({
           .eq("user_id", user.id);
 
         if (splitError) throw splitError;
+        if (isActive) {
+          const { error: deactivateError } = await supabase
+            .from("splits")
+            .update({ is_active: false })
+            .eq("user_id", user.id)
+            .neq("id", existingSplitId);
+
+          if (deactivateError) throw deactivateError;
+        }
 
         // 2. Delete existing days, exercises, and sets (cascade will handle related tables)
         const { error: deleteError } = await supabase
@@ -789,11 +800,22 @@ const CreatePlan = ({
             user_id: user.id,
             name: splitName,
             difficulty: difficulty,
+            is_active: isActive,
           })
           .select()
           .single();
 
         if (splitError) throw splitError;
+
+        if (isActive) {
+          const { error: deactivateError } = await supabase
+            .from("splits")
+            .update({ is_active: false })
+            .eq("user_id", user.id)
+            .neq("id", split.id);
+
+          if (deactivateError) throw deactivateError;
+        }
 
         for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
           const day = days[dayIndex];
@@ -1019,6 +1041,28 @@ const CreatePlan = ({
                   value={splitName}
                   onChange={(e) => setSplitName(e.target.value)}
                 />
+              </div>
+
+              {/* Add this after the difficulty select */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                  />
+                  <label
+                    htmlFor="isActive"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Set as active split
+                  </label>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Only one split can be active at a time
+                </p>
               </div>
 
               <Button onClick={addDay}>+ Day</Button>
