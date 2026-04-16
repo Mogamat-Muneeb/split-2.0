@@ -1,7 +1,7 @@
 import React, { type Dispatch, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ActiveWorkout, Workout } from "@/lib/types";
-import { ArrowLeft, Play } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import WorkoutCard from "./workout-card";
 
 interface WiewAllWorkoutsProps {

@@ -633,10 +633,10 @@ const ManageWorkouts = () => {
                       </h3>
 
                       <div className="mt-3 flex items-center text-sm">
-                        <p className="mr-1 whitespace-nowrap">
+                        <p className="mr-1 whitespace-nowrap lg:text-sm text-xs text-muted-foreground uppercase">
                           {workout?.workout_exercises?.length} Exercises •
                         </p>
-                        <p className="truncate">
+                        <p className="truncate lg:text-sm text-xs text-muted-foreground uppercase">
                           {workout?.workout_exercises &&
                             workout?.workout_exercises
                               .slice(0, 2)

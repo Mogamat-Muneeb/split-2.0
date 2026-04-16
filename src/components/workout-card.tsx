@@ -43,10 +43,10 @@ const WorkoutCard = ({
         </h3>
 
         <div className="mt-3 flex items-center lg:text-sm text-xs">
-          <p className="mr-1 whitespace-nowrap">
+          <p className="mr-1 lg:text-sm text-xs text-muted-foreground uppercase">
             {workout.workout_exercises?.length} Exercises •
           </p>
-          <p className="truncate">
+          <p className="truncate lg:text-sm text-xs text-muted-foreground uppercase">
             {workout?.workout_exercises
               ?.slice(0, 1)
               ?.map((exercise) => exercise.name)

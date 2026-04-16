@@ -366,7 +366,7 @@ const Splits = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-[1440px] mx-auto pt-10 px-4 pb-10">
+      <div className="max-w-[1440px] mx-auto pt-10  pb-10">
         <div className="flex items-center justify-between w-full mb-8">
           <div>
             <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">

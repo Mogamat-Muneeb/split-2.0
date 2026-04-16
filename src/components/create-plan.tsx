@@ -1033,42 +1033,65 @@ const CreatePlan = ({
         <div className="bg-white dark:bg-[#2d2d2d] h-full rounded-2xl p-4 flex flex-col">
           {/* 🔝 HEADER */}
           <div className="flex flex-col gap-3 mb-4 bg-accent rounded-2xl p-4">
-            <div className="flex items-center gap-2">
-              <div className="lg:min-w-[200px] flex-1">
-                <Input
-                  placeholder="Split name..."
-                  className="w-full max-w-md"
-                  value={splitName}
-                  onChange={(e) => setSplitName(e.target.value)}
-                />
-              </div>
-
-              {/* Add this after the difficulty select */}
-              <div>
-                <div className="flex items-center gap-2">
+            <div className="flex lg:flex-row flex-col-reverse items-center gap-2 ">
+              <div className="flex items-center gap-2 w-full">
+                <div className="lg:min-w-[200px]  flex-1">
+                  <Input
+                    placeholder="Split name..."
+                    className="w-full max-w-md "
+                    value={splitName}
+                    onChange={(e) => setSplitName(e.target.value)}
+                  />
+                </div>
+                <div className="flex lg:hidden">
                   <input
                     type="checkbox"
                     id="isActive"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                    className="w-4 h-4 rounded **:accent-orange-700"
                   />
                   <label
                     htmlFor="isActive"
-                    className="text-xs font-medium text-muted-foreground"
+                    className="text-xs font-medium text-muted-foreground lg:block hidden"
                   >
                     Set as active split
                   </label>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Only one split can be active at a time
-                </p>
               </div>
 
-              <Button onClick={addDay}>+ Day</Button>
-
-              <Button onClick={handleSave}>Save</Button>
-              <Button onClick={closeModal}> Cancel</Button>
+              <div className=" flex gap-2 lg:flex-row flex-col justify-end w-full">
+                <div>
+                  <div className=" items-center gap-2 lg:flex hidden">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                      className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                    />
+                    <label
+                      htmlFor="isActive"
+                      className="text-xs font-medium text-muted-foreground lg:block hidden"
+                    >
+                      Set as active split
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1 lg:block hidden">
+                    Only one split can be active at a time
+                  </p>
+                </div>
+                <div className="flex gap-2 items-center  justify-end">
+                  <Button onClick={addDay}>+ Day</Button>
+                  <Button
+                    onClick={handleSave}
+                    className="hover:bg-orange-700 bg-orange-600 text-foreground"
+                  >
+                    Save
+                  </Button>
+                  <Button onClick={closeModal}> Cancel</Button>
+                </div>
+              </div>
             </div>
 
             {muscleMix.length > 0 && (
@@ -1771,7 +1794,7 @@ const DraggableExercise = ({
             </div>
             <div className="flex flex-wrap gap-1 mt-1">
               <span
-                className="font-medium text-[10px] rounded capitalize"
+                className="font-medium text-[10px] rounded uppercase"
                 style={{ color: accentColor }}
               >
                 {pmuscle}
