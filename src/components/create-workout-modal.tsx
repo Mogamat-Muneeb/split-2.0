@@ -736,7 +736,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                                           </h4>
                                         </div>
                                         <div className="flex flex-wrap gap-1 mt-2">
-                                          <span className="text-orange-600 font-medium text-[10px] rounded capitalize">
+                                          <span className="text-orange-600 font-medium text-[10px] rounded uppercase">
                                             {primaryMuscles}
                                           </span>
                                         </div>

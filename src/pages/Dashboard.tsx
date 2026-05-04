@@ -21,6 +21,7 @@ const Dashboard = () => {
     activeWorkout,
     elapsedTime,
     resetWorkout,
+    currentSplitInfo,
   } = useLogWorkout();
 
   const handleExpandClick = () => {
@@ -49,6 +50,7 @@ const Dashboard = () => {
         //@ts-ignore
         workout={selectedWorkout || undefined}
         isEmptyWorkout={!selectedWorkout}
+        splitInfo={currentSplitInfo}
       />
 
       {miniMize && activeWorkout && !startWorkoutModalOpen && (

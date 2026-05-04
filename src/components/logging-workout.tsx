@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { motion } from "framer-motion";
 import { getFoldersAndContents } from "@/hooks/getExerciseByName";
-import { CircleCheck, ArrowLeft } from "lucide-react";
+import { CircleCheck, ChevronLeft } from "lucide-react";
 import supabase from "@/lib/supabase";
 import {
   Select,
@@ -34,11 +34,12 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     updateSet,
     addExercise,
     addSet,
-
+    currentSplitInfo,
     setActiveWorkout,
     openStartWorkoutModal,
     setForceOpenWorkoutModal,
   } = useLogWorkout();
+  console.log("🚀 ~ LoggingWorkout ~ currentSplitInfo:", currentSplitInfo);
   const [user, setUser] = useState<any>(null);
   const [editingSet, setEditingSet] = useState<{
     exerciseId: string;
@@ -475,11 +476,12 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                     onChange={handleWorkoutNameChange}
                   />
                 </div>
-                {isNewWorkout && (
-                  <Button className="w-full" onClick={handleSaveWorkout}>
-                    Save Workout
-                  </Button>
-                )}
+                {isNewWorkout ||
+                  (currentSplitInfo && (
+                    <Button className="w-full" onClick={handleSaveWorkout}>
+                      Save Workout
+                    </Button>
+                  ))}
                 {activeWorkout?.exercises?.map((exercise, i) => (
                   <div key={i} className="bg-accent rounded-lg p-4 w-full">
                     <div className="flex gap-2 items-center">
@@ -507,7 +509,9 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                     </div>
                     <div className="">
                       <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] px-4 items-center w-full mb-4 gap-2 text-xs tracking-tight">
-                        <div className="flex items-center justify-center w-full ">SET</div>
+                        <div className="flex items-center justify-center w-full ">
+                          SET
+                        </div>
                         <div className="flex items-center justify-center w-full ">
                           PREV
                         </div>
@@ -637,7 +641,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                               </SelectContent>
                             </Select>
                           </div>
-                          
+
                           <div className="flex items-center justify-center w-full">
                             -
                           </div>
@@ -802,7 +806,7 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                         onClick={() => setShowLibrary(false)}
                         className="shrink-0"
                       >
-                        <ArrowLeft size={20} />
+                        <ChevronLeft size={20} />
                       </Button>
                     )}
                     <h2 className="text-base tracking-tight font-bold">

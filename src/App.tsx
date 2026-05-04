@@ -32,6 +32,7 @@ export default function App() {
           />
         </Route>
         <Route path="splits" element={<Splits />} />
+
         <Route path="manage-workouts" element={<ManageWorkouts />} />
         <Route path="exercises" element={<div>Dashboard Exercises</div>} />
       </Route>

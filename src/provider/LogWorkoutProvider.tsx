@@ -36,6 +36,9 @@ interface LogWorkoutContextType {
   handleMinimize: () => void;
   setStartWorkoutModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setActiveWorkout: React.Dispatch<React.SetStateAction<ActiveWorkout | null>>;
+  markSplitDayAsCompleted?: (splitId: string, splitDayId: string) => Promise<void>;
+  currentSplitInfo?: { splitId: string; splitDayId: string } | null;
+  setCurrentSplitInfo: React.Dispatch<React.SetStateAction<{ splitId: string; splitDayId: string } | null>>;
 }
 
 const LogWorkoutContext = createContext<LogWorkoutContextType | undefined>(
@@ -61,6 +64,8 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
   const [miniMize, setMiniMize] = useState<boolean>(() =>
     JSON.parse(localStorage.getItem("miniMize") || "false"),
   );
+  const [currentSplitInfo, setCurrentSplitInfo] = useState<{ splitId: string; splitDayId: string } | null>(null);
+
 
   const handleMinimize = () => {
     setMiniMize((prev) => {
@@ -76,6 +81,31 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
 
       return next;
     });
+  };
+
+  const markSplitDayAsCompleted = async (splitId: string, splitDayId: string) => {
+    if (!activeWorkout) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+  
+      const { error } = await supabase
+        .from('split_day_completions')
+        .insert({
+          split_id: splitId,
+          split_day_id: splitDayId,
+          workout_session_id: activeWorkout.id,
+          user_id: user.id
+        });
+      console.log("🚀 ~ markSplitDayAsCompleted ~ error:", error)
+  
+      if (error) throw error;
+      
+      toast.success('Workout completed! Great job! 💪');
+    } catch (error) {
+      console.error('Error marking split day as completed:', error);
+    }
   };
 
   useEffect(() => {
@@ -805,10 +835,22 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
     toast.success("Done ✅!");
   };
 
-  const openStartWorkoutModal = (workout?: Workout | ActiveWorkout) => {
+  // const openStartWorkoutModal = (workout?: Workout | ActiveWorkout) => {
+  //   setSelectedWorkout(workout || null);
+  //   setMiniMize(false);
+  //   localStorage.setItem("miniMize", JSON.stringify(false));
+  //   setStartWorkoutModalOpen(true);
+  // };
+
+  const openStartWorkoutModal = (
+    workout?: Workout | ActiveWorkout,
+    splitInfo?: { splitId: string; splitDayId: string }
+  ) => {
+    console.log("🚀 ~ openStartWorkoutModal ~ splitInfo:", splitInfo)
     setSelectedWorkout(workout || null);
+    setCurrentSplitInfo(splitInfo || null);
     setMiniMize(false);
-    localStorage.setItem("miniMize", JSON.stringify(false));
+    localStorage.setItem('miniMize', JSON.stringify(false));
     setStartWorkoutModalOpen(true);
   };
 
@@ -851,6 +893,9 @@ export const LogWorkoutProvider = ({ children }: { children: ReactNode }) => {
         miniMize,
         setStartWorkoutModalOpen,
         setActiveWorkout,
+        currentSplitInfo,
+        setCurrentSplitInfo,
+        markSplitDayAsCompleted,
       }}
     >
       {children}

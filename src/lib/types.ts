@@ -1,3 +1,5 @@
+import type { Split } from "./utils";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type UserProfile = {
   id: string;
@@ -73,4 +75,55 @@ export interface WorkoutExercise {
   notes: string;
   restTimer: string;
   sets: Set[];
+}
+
+
+export const getDifficultyColor = (difficulty: string) => {
+  switch (difficulty) {
+    case "Beginner":
+      return "text-green-600";
+    case "Intermediate":
+      return "text-blue-600";
+    case "Advanced":
+      return "text-orange-600";
+    case "Expert":
+      return "textbg-red-600";
+    default:
+      return "text-gray-600";
+  }
+};
+
+export const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+export const getTotalExercises = (split: Split) => {
+  return split.days.reduce((total, day) => total + day.exercises.length, 0);
+};
+
+export const getTotalSets = (split: Split) => {
+  return split.days.reduce(
+    (total, day) =>
+      total + day.exercises.reduce((sum, ex) => sum + ex.sets.length, 0),
+    0,
+  );
+};
+
+// In your types file
+export interface SplitDayCompletion {
+  id: string;
+  user_id: string;
+  split_id: string;
+  split_day_id: string;
+  workout_session_id: string;
+  completed_at: string;
+}
+
+export interface SplitDayWithCompletion extends SplitDay {
+  completed_today?: boolean;
+  completed_workout_id?: string;
 }
