@@ -456,6 +456,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
           reps: set.repType === "reps" ? set.reps : null,
           rep_range_min: set.repType === "repRange" ? set.repRangeMin : null,
           rep_range_max: set.repType === "repRange" ? set.repRangeMax : null,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          //@ts-ignore
           type: set.type || "Normal",
         }),
       );

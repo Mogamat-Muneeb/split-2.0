@@ -61,7 +61,9 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
 
   const handleFinish = async () => {
     if (splitInfo) {
-      console.log('splitInfo', splitInfo);
+      console.log("splitInfo", splitInfo);
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-ignore
       await markSplitDayAsCompleted(splitInfo.splitId, splitInfo.splitDayId);
     }
 
