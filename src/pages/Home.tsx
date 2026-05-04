@@ -10,6 +10,7 @@ import WiewAllWorkouts from "@/components/view-all-workouts";
 import WorkoutCard from "@/components/workout-card";
 import { toast } from "sonner";
 import type { Split } from "@/lib/utils";
+import { useSplitCompletions } from "@/hooks/useSplitCompletions";
 
 const Home = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -22,6 +23,10 @@ const Home = () => {
 
   const [activeSplit, setActiveSplit] = useState<Split | null>(null);
   const [isLoadingSplit, setIsLoadingSplit] = useState(true);
+
+  const { isDayCompletedToday, markDayAsCompleted } = useSplitCompletions(
+    activeSplit?.id || null,
+  );
 
   useEffect(() => {
     const checkMobile = () => {
@@ -171,6 +176,80 @@ const Home = () => {
     };
   }, []);
 
+  // const startSplitWorkout = () => {
+  //   if (!activeSplit || !activeSplit.days?.length) {
+  //     toast.error("No days found in this split");
+  //     return;
+  //   }
+
+  //   if (!todaySplitDay) {
+  //     toast.error("No workout scheduled for today");
+  //     return;
+  //   }
+
+  //   const workoutFromSplit: Workout = {
+  //     id: null,
+  //     name: `${activeSplit.name} - ${
+  //       todaySplitDay.name || `Day ${todaySplitDay.day_number}`
+  //     }`,
+  //     created_at: new Date().toISOString(),
+  //     workout_exercises: todaySplitDay.exercises.map(
+  //       (
+  //         exercise: {
+  //           id: any;
+  //           name: any;
+  //           notes: any;
+  //           rest_timer: any;
+  //           sets: {
+  //             id: any;
+  //             set_number: any;
+  //             reps: any;
+  //             rep_range_min: any;
+  //             rep_range_max: any;
+  //             weight: any;
+  //             type: any;
+  //           }[];
+  //         },
+  //         idx: any,
+  //       ) => ({
+  //         id: exercise.id,
+  //         name: exercise.name,
+  //         notes: exercise.notes || "",
+  //         rest_timer: exercise.rest_timer || null,
+  //         exercise_image: null,
+  //         position: idx,
+  //         sets: exercise.sets.map(
+  //           (
+  //             set: {
+  //               id: any;
+  //               set_number: any;
+  //               reps: any;
+  //               rep_range_min: any;
+  //               rep_range_max: any;
+  //               weight: any;
+  //               type: any;
+  //             },
+  //             setIdx: number,
+  //           ) => ({
+  //             id: set.id,
+  //             set_number: set.set_number || setIdx + 1,
+  //             reps: set.reps,
+  //             rep_range_min: set.rep_range_min,
+  //             rep_range_max: set.rep_range_max,
+  //             weight: set.weight || 0,
+  //             type: set.type || "Normal",
+  //             checked: false,
+  //           }),
+  //         ),
+  //       }),
+  //     ),
+  //   };
+
+  //   openStartWorkoutModal(workoutFromSplit);
+  //   setMiniMize(false);
+  //   localStorage.setItem("miniMize", JSON.stringify(false));
+  // };
+
   const startSplitWorkout = () => {
     if (!activeSplit || !activeSplit.days?.length) {
       toast.error("No days found in this split");
@@ -179,6 +258,11 @@ const Home = () => {
 
     if (!todaySplitDay) {
       toast.error("No workout scheduled for today");
+      return;
+    }
+
+    if (isCompletedToday) {
+      toast.info("You've already completed today's workout! Great job!");
       return;
     }
 
@@ -240,7 +324,11 @@ const Home = () => {
       ),
     };
 
-    openStartWorkoutModal(workoutFromSplit);
+    // Pass split info to the modal
+    openStartWorkoutModal(workoutFromSplit, {
+      splitId: activeSplit.id,
+      splitDayId: todaySplitDay.id,
+    });
     setMiniMize(false);
     localStorage.setItem("miniMize", JSON.stringify(false));
   };
@@ -350,6 +438,10 @@ const Home = () => {
 
   const todaySplitDay = getTodaySplitDay();
   console.log("🚀 ~ Home ~ todaySplitDay:", todaySplitDay);
+  const isCompletedToday = todaySplitDay
+    ? isDayCompletedToday(todaySplitDay.id)
+    : false;
+  console.log("🚀 ~ Home ~ isCompletedToday:", isCompletedToday);
 
   return (
     <>
@@ -376,14 +468,16 @@ const Home = () => {
           <h2 className="text-orange-600 font-black lg:text-2xl text-lg tracking-tight">
             Workouts
           </h2>
-          <p className="lg:text-sm text-xs text-muted-foreground">Choose a routine or start fresh.</p>
+          <p className="lg:text-sm text-xs text-muted-foreground">
+            Choose a routine or start fresh.
+          </p>
         </div>
 
         <div>
           <div className="flex w-full flex-col  gap-3">
-            {!isLoadingSplit && activeSplit && (
+            {/* {!isLoadingSplit && activeSplit && (
               <motion.div
-                className="flex justify-between items-center bg-gradient-to-tl from-blue-600 to-violet-600 h-full rounded-4xl p-5 lg:col-span-3"
+                className={`flex justify-between items-center ${todaySplitDay ? "bg-gradient-to-tl from-blue-600 to-violet-600" : "bg-[#B2AC88]"} h-full rounded-4xl p-5 lg:col-span-3`}
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
@@ -413,11 +507,71 @@ const Home = () => {
                   </motion.div>
                 )}
               </motion.div>
+            )} */}
+
+            {!isLoadingSplit && activeSplit && (
+              // "bg-[#0047AB]"
+              <motion.div
+                className={`flex justify-between items-center ${
+                  isCompletedToday
+                    ? "bg-[#3D348B]"
+                    : todaySplitDay
+                      ? "bg-gradient-to-tl from-blue-600 to-violet-600"
+                      : "bg-[#B2AC88]"
+                } h-full rounded-4xl p-5 lg:col-span-3`}
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div>
+                  <h2 className="lg:text-lg text-base tracking-tight font-bold text-white dark:text-accent-foreground">
+                    Current Split: {activeSplit.name}
+                  </h2>
+                  <p className="lg:text-sm text-xs text-white dark:text-accent-foreground">
+                    {todaySplitDay
+                      ? isCompletedToday
+                        ? `Completed: ${todaySplitDay.name || `Day ${todaySplitDay.day_number}`}`
+                        : `Today: ${todaySplitDay.name || `Day ${todaySplitDay.day_number}`}`
+                      : "Rest Day"}{" "}
+                    • {activeSplit.days.length}{" "}
+                    {activeSplit.days.length === 1 ? "Day" : "Days"}
+                  </p>
+                </div>
+                {todaySplitDay && !isCompletedToday && (
+                  <motion.div
+                    onClick={startSplitWorkout}
+                    className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                  >
+                    <Play
+                      className="stroke-background fill-background"
+                      size={18}
+                    />
+                  </motion.div>
+                )}
+                {isCompletedToday && (
+                  <div className="rounded-full p-3 w-fit bg-white">
+                    <svg
+                      className="w-5 h-5 text-black"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </motion.div>
             )}
 
             {/* Loading state for split */}
             {isLoadingSplit && (
-              <motion.div className="flex justify-between items-center bg-gradient-to-tl from-blue-600 to-violet-600 h-full rounded-4xl p-5 lg:col-span-3">
+              <motion.div className="flex justify-between items-center bg-gray-600 h-full rounded-4xl p-5 lg:col-span-3">
                 <div>
                   <h2 className="lg:text-sm text-xs text-white dark:text-accent-foreground">
                     Loading split...

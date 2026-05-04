@@ -423,11 +423,13 @@ const Splits = () => {
                     key={split.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-accent rounded-2xl overflow-hidden hover:shadow-lg transition-shadow relative"
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                    className="bg-accent rounded-2xl overflow-hidden  relative"
                   >
                     {split.is_active && (
                       <div className="flex justify-end">
-                        <div className="bg-[#3D348B] text-white text-xs absolute top-0 rounded-tr-2xl rounded-bl-2xl w-fit px-4 py-1">
+                        <div className="bg-[#0047AB] text-white text-xs absolute top-0 rounded-tr-2xl rounded-bl-2xl w-fit px-4 py-1">
                           Active
                         </div>
                       </div>

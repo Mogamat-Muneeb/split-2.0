@@ -34,11 +34,12 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
     updateSet,
     addExercise,
     addSet,
-
+    currentSplitInfo,
     setActiveWorkout,
     openStartWorkoutModal,
     setForceOpenWorkoutModal,
   } = useLogWorkout();
+  console.log("🚀 ~ LoggingWorkout ~ currentSplitInfo:", currentSplitInfo);
   const [user, setUser] = useState<any>(null);
   const [editingSet, setEditingSet] = useState<{
     exerciseId: string;
@@ -475,11 +476,12 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                     onChange={handleWorkoutNameChange}
                   />
                 </div>
-                {isNewWorkout && (
-                  <Button className="w-full" onClick={handleSaveWorkout}>
-                    Save Workout
-                  </Button>
-                )}
+                {isNewWorkout ||
+                  (currentSplitInfo && (
+                    <Button className="w-full" onClick={handleSaveWorkout}>
+                      Save Workout
+                    </Button>
+                  ))}
                 {activeWorkout?.exercises?.map((exercise, i) => (
                   <div key={i} className="bg-accent rounded-lg p-4 w-full">
                     <div className="flex gap-2 items-center">

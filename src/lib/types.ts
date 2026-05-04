@@ -112,3 +112,18 @@ export const getTotalSets = (split: Split) => {
     0,
   );
 };
+
+// In your types file
+export interface SplitDayCompletion {
+  id: string;
+  user_id: string;
+  split_id: string;
+  split_day_id: string;
+  workout_session_id: string;
+  completed_at: string;
+}
+
+export interface SplitDayWithCompletion extends SplitDay {
+  completed_today?: boolean;
+  completed_workout_id?: string;
+}

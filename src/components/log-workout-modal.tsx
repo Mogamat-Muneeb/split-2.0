@@ -11,6 +11,7 @@ interface LogWorkoutModalProps {
   onClose: () => void;
   workout?: Workout;
   isEmptyWorkout?: boolean;
+  splitInfo?: { splitId: string; splitDayId: string } | null;
 }
 
 const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
@@ -18,6 +19,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
   onClose,
   workout,
   isEmptyWorkout = false,
+  splitInfo, // Receive split info
 }) => {
   const {
     startWorkout,
@@ -28,6 +30,7 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     setForceOpenWorkoutModal,
     forceOpenWorkoutModal,
     setMiniMize,
+    markSplitDayAsCompleted,
   } = useLogWorkout();
 
   const handleStart = () => {
@@ -56,7 +59,12 @@ const LogWorkoutModal: React.FC<LogWorkoutModalProps> = ({
     onClose();
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    if (splitInfo) {
+      console.log('splitInfo', splitInfo);
+      await markSplitDayAsCompleted(splitInfo.splitId, splitInfo.splitDayId);
+    }
+
     endWorkout();
     onClose();
   };
