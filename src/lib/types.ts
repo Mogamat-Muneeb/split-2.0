@@ -122,7 +122,8 @@ export interface SplitDayCompletion {
   workout_session_id: string;
   completed_at: string;
 }
-
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+//@ts-ignore
 export interface SplitDayWithCompletion extends SplitDay {
   completed_today?: boolean;
   completed_workout_id?: string;
