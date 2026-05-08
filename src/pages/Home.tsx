@@ -443,7 +443,6 @@ const Home = () => {
   const isCompletedToday = todaySplitDay
     ? isDayCompletedToday(todaySplitDay.id)
     : false;
-  console.log("🚀 ~ Home ~ isCompletedToday:", isCompletedToday);
 
   return (
     <>
@@ -477,42 +476,7 @@ const Home = () => {
 
         <div>
           <div className="flex w-full flex-col  gap-3">
-            {/* {!isLoadingSplit && activeSplit && (
-              <motion.div
-                className={`flex justify-between items-center ${todaySplitDay ? "bg-gradient-to-tl from-blue-600 to-violet-600" : "bg-[#B2AC88]"} h-full rounded-4xl p-5 lg:col-span-3`}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div>
-                  <h2 className="lg:text-lg text-base tracking-tight font-bold text-white dark:text-accent-foreground">
-                    Current Split: {activeSplit.name}
-                  </h2>
-                  <p className="lg:text-sm text-xs text-white dark:text-accent-foreground">
-                    {todaySplitDay
-                      ? `Today: ${todaySplitDay.name || `Day ${todaySplitDay.day_number}`}`
-                      : "Rest Day"}{" "}
-                    • {activeSplit.days.length}{" "}
-                    {activeSplit.days.length === 1 ? "Day" : "Days"}
-                  </p>
-                </div>
-                {todaySplitDay && (
-                  <motion.div
-                    onClick={startSplitWorkout}
-                    className="rounded-full p-3 w-fit dark:bg-white bg-accent-foreground cursor-pointer"
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ type: "spring", stiffness: 400 }}
-                  >
-                    <Play
-                      className="stroke-background fill-background"
-                      size={18}
-                    />
-                  </motion.div>
-                )}
-              </motion.div>
-            )} */}
-
             {!isLoadingSplit && activeSplit && (
-              // "bg-[#0047AB]"
               <motion.div
                 className={`flex justify-between items-center ${
                   isCompletedToday
@@ -522,7 +486,7 @@ const Home = () => {
                       : "bg-[#B2AC88]"
                 } h-full rounded-4xl p-5 lg:col-span-3`}
                 whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
+                transition={{ type: "spring", stiffness: 400 }}
               >
                 <div>
                   <h2 className="lg:text-lg text-base tracking-tight font-bold text-white dark:text-accent-foreground">
@@ -573,12 +537,10 @@ const Home = () => {
 
             {/* Loading state for split */}
             {isLoadingSplit && (
-              <motion.div className="flex justify-between items-center bg-gray-600 h-full rounded-4xl p-5 lg:col-span-3">
-                <div>
-                  <h2 className="lg:text-sm text-xs text-white dark:text-accent-foreground">
-                    Loading split...
-                  </h2>
-                </div>
+              <motion.div className="flex justify-between items-center">
+                <p className="text-gray-500 dark:text-gray-400 lg:text-sm text-xs">
+                  Loading split..
+                </p>
               </motion.div>
             )}
 

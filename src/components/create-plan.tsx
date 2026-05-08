@@ -1049,7 +1049,7 @@ const CreatePlan = ({
                     id="isActive"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="w-4 h-4 rounded **:accent-orange-700"
+                    className="w-4 h-4 rounded  accent-orange-700"
                   />
                   <label
                     htmlFor="isActive"
@@ -1068,7 +1068,7 @@ const CreatePlan = ({
                       id="isActive"
                       checked={isActive}
                       onChange={(e) => setIsActive(e.target.checked)}
-                      className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                      className="w-4 h-4 rounded  accent-orange-700"
                     />
                     <label
                       htmlFor="isActive"
@@ -1089,7 +1089,14 @@ const CreatePlan = ({
                   >
                     Save
                   </Button>
-                  <Button onClick={closeModal}> Cancel</Button>
+                  <Button
+                    onClick={closeModal}
+                    variant="outline"
+                    className="!border-transparent"
+                  >
+                    {" "}
+                    Cancel
+                  </Button>
                 </div>
               </div>
             </div>

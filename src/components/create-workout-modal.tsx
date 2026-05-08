@@ -550,7 +550,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                       <Button
                         onClick={() => setShowLibrary(true)}
                         className="bg-orange-600 text-white hover:bg-orange-700"
-                        size="sm"
                       >
                         Add Exercise
                       </Button>
@@ -558,7 +557,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({
                         onClick={closeModal}
                         variant="outline"
                         className="!border-transparent"
-                        size="sm"
                       >
                         Cancel
                       </Button>

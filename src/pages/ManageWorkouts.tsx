@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   Trash2,
+  Pen,
 } from "lucide-react";
 import {
   Dialog,
@@ -675,6 +676,14 @@ const ManageWorkouts = () => {
                               >
                                 <DropdownMenuGroup>
                                   <DropdownMenuItem
+                                    onClick={() => openEditModal(workout)}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Pen className="h-4 w-4" />
+                                      <p className="text-sm">Edit</p>
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
                                     onClick={(e) =>
                                       handleDeleteClick(workout, e)
                                     }
@@ -717,6 +726,14 @@ const ManageWorkouts = () => {
                                     align="start"
                                   >
                                     <DropdownMenuGroup>
+                                      <DropdownMenuItem
+                                        onClick={() => openEditModal(workout)}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <Pen className="h-4 w-4" />
+                                          <p className="text-sm">Edit</p>
+                                        </div>
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem
                                         onClick={(e) =>
                                           handleDeleteClick(workout, e)
