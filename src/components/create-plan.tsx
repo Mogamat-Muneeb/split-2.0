@@ -349,6 +349,7 @@ const CreatePlan = ({
   const [activeDayId, setActiveDayId] = useState("day-1");
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [isStackedLayout, setIsStackedLayout] = useState(false);
   const [showMobileLibrary, setShowMobileLibrary] = useState(false);
   const mobileStackRef = useRef<HTMLDivElement | null>(null);
   const mobileDragStateRef = useRef<{
@@ -412,15 +413,21 @@ const CreatePlan = ({
   }, [existingSplitData]);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
+    const mobileMq = window.matchMedia("(max-width: 767px)");
+    const stackedMq = window.matchMedia("(max-width: 1023px)");
     const sync = () => {
-      const mobile = mq.matches;
+      const mobile = mobileMq.matches;
       setIsMobileView(mobile);
+      setIsStackedLayout(stackedMq.matches);
       if (!mobile) setShowMobileLibrary(false);
     };
     sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    mobileMq.addEventListener("change", sync);
+    stackedMq.addEventListener("change", sync);
+    return () => {
+      mobileMq.removeEventListener("change", sync);
+      stackedMq.removeEventListener("change", sync);
+    };
   }, []);
 
   const filteredExercises = exercises.filter((e) =>
@@ -473,17 +480,19 @@ const CreatePlan = ({
   const beginMobileResize = (
     event: React.PointerEvent<HTMLDivElement>,
   ): void => {
-    if (!isMobileView) return;
+    if (!isStackedLayout) return;
     const container = mobileStackRef.current;
     if (!container) return;
 
     event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
 
     const startY = event.clientY;
     const startRatio = mobilePaneRatio;
     mobileDragStateRef.current = { startY, startRatio };
 
     const handleMove = (e: PointerEvent) => {
+      e.preventDefault();
       const state = mobileDragStateRef.current;
       if (!state || !container) return;
       const height = container.clientHeight || 1;
@@ -502,7 +511,7 @@ const CreatePlan = ({
       window.removeEventListener("pointercancel", handleUp);
     };
 
-    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointermove", handleMove, { passive: false });
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleUp);
   };
@@ -1029,10 +1038,10 @@ const CreatePlan = ({
         className="fixed inset-0 bg-black/20 z-50"
       />
 
-      <motion.div className="fixed inset-0 z-100 p-4">
-        <div className="bg-white dark:bg-[#2d2d2d] h-full rounded-2xl p-4 flex flex-col">
+      <motion.div className="fixed inset-0 z-100 lg:p-4 p-0">
+        <div className="bg-white dark:bg-[#2d2d2d] h-full lg:rounded-2xl rounded-0 p-4 flex flex-col">
           {/* 🔝 HEADER */}
-          <div className="flex flex-col gap-3 mb-4 bg-accent rounded-2xl p-4">
+          <div className="flex flex-col gap-3 mb-4 bg-accent rounded-2xl  p-4">
             <div className="flex lg:flex-row flex-col-reverse items-center gap-2 ">
               <div className="flex items-center gap-2 w-full">
                 <div className="lg:min-w-[200px]  flex-1">
@@ -1208,8 +1217,10 @@ const CreatePlan = ({
           </div>
 
           <div
-            className="lg:hidden flex items-center justify-center py-1 my-1"
+            className="lg:hidden flex items-center justify-center py-2 my-1 touch-none select-none cursor-row-resize"
             onPointerDown={beginMobileResize}
+            role="separator"
+            aria-orientation="horizontal"
           >
             <div className="h-1 w-16 rounded-full bg-border/70" />
           </div>
@@ -1231,7 +1242,7 @@ const CreatePlan = ({
                 <div
                   className="space-y-2 overflow-y-auto lg:h-full h-fit"
                   style={
-                    isMobileView
+                    isStackedLayout
                       ? {
                           flexBasis: `${mobilePaneRatio * 100}%`,
                           minHeight: 0,
@@ -1267,8 +1278,10 @@ const CreatePlan = ({
               </SortableContext>
 
               <div
-                className="lg:hidden flex items-center justify-center py-1 my-1"
+                className="lg:hidden flex items-center justify-center py-2 my-1 touch-none select-none cursor-row-resize"
                 onPointerDown={beginMobileResize}
+                role="separator"
+                aria-orientation="horizontal"
               >
                 <div className="h-1 w-16 rounded-full bg-border/70" />
               </div>
@@ -1277,7 +1290,7 @@ const CreatePlan = ({
               <div
                 className="lg:rounded-xl lg:p-3 p-0 overflow-y-auto min-h-0 flex flex-col"
                 style={
-                  isMobileView
+                  isStackedLayout
                     ? {
                         flexBasis: `${(1 - mobilePaneRatio) * 100}%`,
                         minHeight: 0,
@@ -1773,17 +1786,6 @@ const DraggableExercise = ({
         whileHover={{ scale: 1.02 }}
         className="flex items-center justify-center w-full"
       >
-        {/* <div
-          className="lex shrink-0 items-center justify-center rounded-xl p-2  ring-black/10 dark:ring-white/15"
-          style={{
-            color: accentColor,
-            backgroundColor: `${accentColor}26`,
-          }}
-          aria-hidden
-        >
-          <Dumbbell size={8} strokeWidth={2} />
-        </div> */}
-
         <div className="shrink-0 ml-2">
           {image && (
             <img
