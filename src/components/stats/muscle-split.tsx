@@ -21,6 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  effectiveReps,
+  getBroadMuscleGroups,
+  getRangeStart,
+  isCompletedSet,
+  roundTo,
+  setVolume,
+} from "@/lib/statsMath";
 
 const MuscleSplit = () => {
   const [timeRange, setTimeRange] = useState("1year");
@@ -62,39 +70,6 @@ const MuscleSplit = () => {
     }
   }, [timeRange, exerciseLibrary]);
 
-  const getMuscleGroup = (exerciseName: string, exerciseLibrary: any[]) => {
-    const searchName = exerciseName?.toLowerCase().trim();
-
-    const exercise = exerciseLibrary.find((ex) => {
-      const libraryName = ex.jsonContents?.[0]?.content?.name;
-      return libraryName?.toLowerCase().trim() === searchName;
-    });
-
-    if (!exercise || !exercise.jsonContents?.[0]?.content?.primaryMuscles) {
-      return null;
-    }
-
-    const primaryMuscles = exercise.jsonContents[0].content.primaryMuscles;
-
-    if (primaryMuscles.includes("abdominals")) return "Core";
-    if (primaryMuscles.includes("quadriceps")) return "Legs";
-    if (primaryMuscles.includes("hamstrings")) return "Legs";
-    if (primaryMuscles.includes("glutes")) return "Legs";
-    if (primaryMuscles.includes("calves")) return "Legs";
-    if (primaryMuscles.includes("chest")) return "Chest";
-    if (primaryMuscles.includes("lats")) return "Back";
-    if (primaryMuscles.includes("middle back")) return "Back";
-    if (primaryMuscles.includes("lower back")) return "Back";
-    if (primaryMuscles.includes("biceps")) return "Arms";
-    if (primaryMuscles.includes("triceps")) return "Arms";
-    if (primaryMuscles.includes("forearms")) return "Arms";
-    if (primaryMuscles.includes("shoulders")) return "Shoulders";
-    if (primaryMuscles.includes("traps")) return "Shoulders";
-    if (primaryMuscles.includes("adductors")) return "Legs";
-
-    return null;
-  };
-
   const fetchMuscleSplitData = async () => {
     try {
       setIsLoading(true);
@@ -103,26 +78,8 @@ const MuscleSplit = () => {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Calculate date range
       const now = new Date();
-      const startDate = new Date();
-
-      switch (timeRange) {
-        case "1month":
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case "3months":
-          startDate.setMonth(now.getMonth() - 3);
-          break;
-        case "6months":
-          startDate.setMonth(now.getMonth() - 6);
-          break;
-        case "1year":
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-        default:
-          startDate.setFullYear(now.getFullYear() - 1);
-      }
+      const startDate = getRangeStart(timeRange, now);
 
       // Fetch workout sessions with exercises
       const { data: sessions, error: sessionsError } = await supabase
@@ -137,7 +94,9 @@ const MuscleSplit = () => {
               weight,
               reps,
               rep_range_min,
-              rep_range_max
+              rep_range_max,
+              checked,
+              type
             )
           )
         `,
@@ -149,7 +108,10 @@ const MuscleSplit = () => {
       if (sessionsError) throw sessionsError;
 
       // Initialize data structure for muscle groups
-      const muscleStats = {
+      const muscleStats: Record<
+        string,
+        { sets: number; volume: number; reps: number }
+      > = {
         Back: { sets: 0, volume: 0, reps: 0 },
         Chest: { sets: 0, volume: 0, reps: 0 },
         Legs: { sets: 0, volume: 0, reps: 0 },
@@ -161,39 +123,50 @@ const MuscleSplit = () => {
       // Process each session
       sessions?.forEach((session) => {
         session.workout_session_exercises?.forEach((exercise) => {
-          const muscleGroup = getMuscleGroup(exercise.name, exerciseLibrary);
+          const muscleGroups = getBroadMuscleGroups(
+            exercise.name,
+            exerciseLibrary,
+          );
 
-          if (muscleGroup && muscleStats[muscleGroup]) {
-            // Process sets
-            exercise.workout_sets?.forEach((set) => {
-              muscleStats[muscleGroup].sets++;
+          if (muscleGroups.length === 0) return;
 
-              const reps = set.reps || set.rep_range_min || 0;
-              muscleStats[muscleGroup].reps += reps;
+          exercise.workout_sets?.forEach((set) => {
+            if (!isCompletedSet(set)) return;
 
-              const volume = (set.weight || 0) * reps;
-              muscleStats[muscleGroup].volume += volume;
+            const reps = effectiveReps(set);
+            const volume = setVolume(set);
+            const share = 1 / muscleGroups.length;
+
+            muscleGroups.forEach((muscleGroup) => {
+              const stats = muscleStats[muscleGroup];
+              if (!stats) return;
+
+              stats.sets += share;
+              stats.reps += reps * share;
+              stats.volume += volume * share;
             });
-          }
+          });
         });
       });
 
-      // Find max value for normalization (0-100 scale)
-      const maxValues = {
-        sets: Math.max(...Object.values(muscleStats).map((m) => m.sets), 1),
-        volume: Math.max(...Object.values(muscleStats).map((m) => m.volume), 1),
-        reps: Math.max(...Object.values(muscleStats).map((m) => m.reps), 1),
+      const totalValues = {
+        sets: Object.values(muscleStats).reduce((sum, m) => sum + m.sets, 0),
+        volume: Object.values(muscleStats).reduce(
+          (sum, m) => sum + m.volume,
+          0,
+        ),
+        reps: Object.values(muscleStats).reduce((sum, m) => sum + m.reps, 0),
       };
 
-      // Convert to radar chart format with normalization
       const radarData = Object.entries(muscleStats).map(([muscle, data]) => ({
         muscle,
-        sets: (data.sets / maxValues.sets) * 100,
-        volume: (data.volume / maxValues.volume) * 100,
-        reps: (data.reps / maxValues.reps) * 100,
-        rawSets: data.sets,
+        sets: totalValues.sets > 0 ? (data.sets / totalValues.sets) * 100 : 0,
+        volume:
+          totalValues.volume > 0 ? (data.volume / totalValues.volume) * 100 : 0,
+        reps: totalValues.reps > 0 ? (data.reps / totalValues.reps) * 100 : 0,
+        rawSets: roundTo(data.sets, 1),
         rawVolume: Math.round(data.volume),
-        rawReps: data.reps,
+        rawReps: roundTo(data.reps, 1),
       }));
       //@ts-ignore
       setChartData(radarData);

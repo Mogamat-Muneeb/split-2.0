@@ -18,6 +18,17 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+import {
+  dateKey,
+  effectiveReps,
+  formatShortDate,
+  getRangeStart,
+  getWeekStarts,
+  isCompletedSet,
+  roundTo,
+  setVolume,
+  startOfWeek,
+} from "@/lib/statsMath";
 
 interface TrendData {
   exerciseName: string;
@@ -53,50 +64,34 @@ const TopTrends = () => {
   const fetchTrendingExercises = async () => {
     try {
       setIsLoading(true);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) return;
 
-      // Calculate date ranges
       const now = new Date();
-      const startDate = new Date();
+      const startDate = getRangeStart(timeRange, now);
 
-      switch (timeRange) {
-        case "1month":
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case "3months":
-          startDate.setMonth(now.getMonth() - 3);
-          break;
-        case "6months":
-          startDate.setMonth(now.getMonth() - 6);
-          break;
-        case "1year":
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-        default:
-          startDate.setMonth(now.getMonth() - 3);
-      }
-
-      // Fetch workout sessions with exercises and sets
       const { data: sessions, error } = await supabase
         .from("workout_sessions")
         .select(
           `
-          id,
-          started_at,
-          workout_session_exercises (
-            name,
-            workout_sets (
-              weight,
-              reps,
-              rep_range_min,
-              rep_range_max
-            )
+        id,
+        started_at,
+        workout_session_exercises (
+          name,
+          workout_sets (
+            weight,
+            reps,
+            rep_range_min,
+            rep_range_max,
+            checked,
+            type
           )
-        `,
+        )
+      `,
         )
         .eq("status", "finished")
         .eq("user_id", user.id)
@@ -105,28 +100,29 @@ const TopTrends = () => {
 
       if (error) throw error;
 
-      // Group exercise data by name and date
-      const exerciseData = new Map<string, { date: string; value: number }[]>();
+      const weekMeta = getWeekStarts(startDate, now).map((weekStart) => ({
+        key: dateKey(weekStart),
+        date: formatShortDate(weekStart),
+      }));
+
+      const exerciseData = new Map<string, Map<string, number>>();
 
       sessions?.forEach((session) => {
-        const sessionDate = new Date(session.started_at).toLocaleDateString(
-          "en-US",
-          {
-            month: "short",
-            day: "numeric",
-          },
-        );
+        const weekKey = dateKey(startOfWeek(new Date(session.started_at)));
 
         session.workout_session_exercises?.forEach((exercise) => {
           if (!exercise.name) return;
 
           let metricValue = 0;
+
           exercise.workout_sets?.forEach((set) => {
-            const reps = set.reps || set.rep_range_min || 0;
-            const weight = set.weight || 0;
+            if (!isCompletedSet(set)) return;
+
+            const reps = effectiveReps(set);
+            const volume = setVolume(set);
 
             if (activeMetric === "volume") {
-              metricValue += weight * reps;
+              metricValue += volume;
             } else if (activeMetric === "sets") {
               metricValue += 1;
             } else if (activeMetric === "reps") {
@@ -136,68 +132,70 @@ const TopTrends = () => {
 
           if (metricValue > 0) {
             if (!exerciseData.has(exercise.name)) {
-              exerciseData.set(exercise.name, []);
+              exerciseData.set(exercise.name, new Map());
             }
-            const existing = exerciseData.get(exercise.name)!;
-            const existingEntry = existing.find((e) => e.date === sessionDate);
 
-            if (existingEntry) {
-              existingEntry.value += metricValue;
-            } else {
-              existing.push({ date: sessionDate, value: metricValue });
-            }
+            const existing = exerciseData.get(exercise.name)!;
+            existing.set(weekKey, (existing.get(weekKey) || 0) + metricValue);
           }
         });
       });
 
-      // Calculate trends for each exercise
       const trends: TrendData[] = [];
 
-      exerciseData.forEach((dataPoints, exerciseName) => {
-        if (dataPoints.length < 2) return; // Need minimum data points
+      exerciseData.forEach((weeklyValues, exerciseName) => {
+        const weeklyPoints = weekMeta.map(({ key, date }) => ({
+          date,
+          value: weeklyValues.get(key) || 0,
+        }));
 
-        // Sort by date
-        const sorted = [...dataPoints].sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        const activeWeeks = weeklyPoints.filter((point) => point.value > 0);
+        if (activeWeeks.length < 2) return;
+
+        const midPoint = Math.floor(weeklyPoints.length / 2);
+        const previousPeriod = weeklyPoints.slice(0, midPoint);
+        const recentPeriod = weeklyPoints.slice(midPoint);
+
+        if (previousPeriod.length === 0 || recentPeriod.length === 0) return;
+
+        const previousAvg = roundTo(
+          previousPeriod.reduce((sum, d) => sum + d.value, 0) /
+            previousPeriod.length,
+          1,
         );
 
-        // Split into recent vs previous periods (last half vs first half)
-        const midPoint = Math.floor(sorted.length / 2);
-        const previousPeriod = sorted.slice(0, midPoint);
-        const recentPeriod = sorted.slice(midPoint);
-
-        const previousAvg =
-          previousPeriod.reduce((sum, d) => sum + d.value, 0) /
-          previousPeriod.length;
-        const recentAvg =
+        const recentAvg = roundTo(
           recentPeriod.reduce((sum, d) => sum + d.value, 0) /
-          recentPeriod.length;
+            recentPeriod.length,
+          1,
+        );
 
-        const change = recentAvg - previousAvg;
+        const change = roundTo(recentAvg - previousAvg, 1);
         const changePercent =
-          previousAvg > 0 ? (change / previousAvg) * 100 : 0;
+          previousAvg > 0
+            ? (change / previousAvg) * 100
+            : recentAvg > 0
+              ? 100
+              : 0;
 
-        // Calculate per-week change
-        const weeksDiff = Math.ceil(sorted.length / 2 / 7); // Approximate
-        const weeklyChange = change / (weeksDiff || 1);
-
-        if (Math.abs(changePercent) > 3) {
-          // Only show trends with >5% change
+        if (Math.abs(changePercent) > 3 && Math.abs(change) > 0) {
           trends.push({
             exerciseName,
             metric: activeMetric,
-            change: Math.round(weeklyChange * 10) / 10,
+            change,
             changePercent: Math.round(changePercent),
             unit: METRIC_CONFIG[activeMetric].unit,
-            currentValue: Math.round(recentAvg),
-            previousValue: Math.round(previousAvg),
-            chartData: sorted.slice(-7), // Last 7 data points for sparkline
+            currentValue: recentAvg,
+            previousValue: previousAvg,
+            chartData: weeklyPoints.slice(-7).map(({ date, value }) => ({
+              date,
+              value: roundTo(value, 1),
+            })),
             isPositive: change > 0,
           });
         }
       });
 
-      // Sort by biggest absolute change and take top 3
       const topTrends = trends
         .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
         .slice(0, 3);

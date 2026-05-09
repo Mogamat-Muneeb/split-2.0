@@ -19,6 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"; // Adjust import path as needed
+import {
+  dateKey,
+  effectiveReps,
+  formatShortDate,
+  getRangeStart,
+  getWeekStarts,
+  isCompletedSet,
+  roundTo,
+  setVolume,
+  startOfWeek,
+} from "@/lib/statsMath";
 
 const KeyTotal = () => {
   const [timeRange, setTimeRange] = useState("3months");
@@ -45,26 +56,8 @@ const KeyTotal = () => {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Calculate date range
       const now = new Date();
-      const startDate = new Date();
-
-      switch (timeRange) {
-        case "1month":
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case "3months":
-          startDate.setMonth(now.getMonth() - 3);
-          break;
-        case "6months":
-          startDate.setMonth(now.getMonth() - 6);
-          break;
-        case "1year":
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-        default:
-          startDate.setMonth(now.getMonth() - 3);
-      }
+      const startDate = getRangeStart(timeRange, now);
 
       // Fetch completed workout sessions
       const { data: sessions, error: sessionsError } = await supabase
@@ -79,7 +72,9 @@ const KeyTotal = () => {
               weight,
               reps,
               rep_range_min,
-              rep_range_max
+              rep_range_max,
+              checked,
+              type
             )
           )
         `,
@@ -97,8 +92,19 @@ const KeyTotal = () => {
       let totalVolume = 0;
       let totalReps = 0;
 
-      // Group by week for chart
       const chartDataMap = new Map();
+
+      getWeekStarts(startDate, now).forEach((weekStart) => {
+        const weekKey = dateKey(weekStart);
+        chartDataMap.set(weekKey, {
+          week: formatShortDate(weekStart),
+          workouts: 0,
+          duration: 0,
+          volume: 0,
+          reps: 0,
+          fullDate: weekStart,
+        });
+      });
 
       sessions?.forEach((session) => {
         // Calculate duration in hours
@@ -116,9 +122,11 @@ const KeyTotal = () => {
         let sessionReps = 0;
         session.workout_session_exercises?.forEach((exercise) => {
           exercise.workout_sets?.forEach((set) => {
-            const reps = set.reps || set.rep_range_min || 0;
-            const weight = set.weight || 0;
-            const volume = weight * reps;
+            if (!isCompletedSet(set)) return;
+
+            const reps = effectiveReps(set);
+            const volume = setVolume(set);
+
             totalVolume += volume;
             totalReps += reps;
             sessionVolume += volume;
@@ -126,22 +134,13 @@ const KeyTotal = () => {
           });
         });
 
-        // Group by week (starting Monday)
         const date = new Date(session.started_at);
-        const weekStart = new Date(date);
-        const day = date.getDay();
-        const diffToMonday = day === 0 ? 6 : day - 1;
-        weekStart.setDate(date.getDate() - diffToMonday);
-        weekStart.setHours(0, 0, 0, 0);
-
-        const weekKey = weekStart.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+        const weekStart = startOfWeek(date);
+        const weekKey = dateKey(weekStart);
 
         if (!chartDataMap.has(weekKey)) {
           chartDataMap.set(weekKey, {
-            week: weekKey,
+            week: formatShortDate(weekStart),
             workouts: 0,
             duration: 0,
             volume: 0,
@@ -174,17 +173,17 @@ const KeyTotal = () => {
         .map(({ week, workouts, duration, volume, reps }) => ({
           week,
           workouts,
-          duration: Math.round(duration * 100) / 100,
+          duration: roundTo(duration, 2),
           volume: Math.round(volume),
-          reps: Math.round(reps / 100) * 100,
+          reps: roundTo(reps, 1),
         }));
 
       setChartData(chartArray);
       setStats({
         workouts: totalWorkouts,
-        duration: Math.round(totalDurationHours),
+        duration: roundTo(totalDurationHours, 1),
         volume: Math.round(totalVolume),
-        reps: totalReps,
+        reps: roundTo(totalReps, 1),
       });
     } catch (error) {
       console.error("Error fetching workout stats:", error);
