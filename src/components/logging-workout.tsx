@@ -29,6 +29,36 @@ interface Exercise {
   jsonContents: any[];
 }
 
+type PreviousWorkoutSet = {
+  set_number: number | null;
+  weight: number | null;
+  reps: number | null;
+  rep_range_min: number | null;
+  rep_range_max: number | null;
+  checked: boolean | null;
+  type?: string | null;
+};
+
+const normalizeExerciseName = (name?: string | null) =>
+  name?.trim().toLowerCase() || "";
+
+const getPreviousSetKey = (exerciseName: string, setNumber?: number | null) =>
+  `${normalizeExerciseName(exerciseName)}:${setNumber || 0}`;
+
+const formatPreviousSet = (set: PreviousWorkoutSet) => {
+  const weight = Number(set.weight) || 0;
+  const reps =
+    set.reps !== null && set.reps !== undefined
+      ? `${set.reps}`
+      : set.rep_range_min !== null && set.rep_range_min !== undefined
+        ? set.rep_range_max !== null && set.rep_range_max !== undefined
+          ? `${set.rep_range_min}-${set.rep_range_max}`
+          : `${set.rep_range_min}`
+        : "-";
+
+  return reps === "-" ? `${weight}kg` : `${weight}kg x ${reps}`;
+};
+
 const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   const {
     updateSet,
@@ -58,10 +88,19 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showLibrary, setShowLibrary] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [previousSets, setPreviousSets] = useState<Record<string, string>>({});
 
   const [exerciseRepTypes, setExerciseRepTypes] = useState<{
     [exerciseId: string]: "reps" | "repRange";
   }>({});
+
+  const previousLookupSignature =
+    activeWorkout?.exercises
+      ?.map(
+        (exercise) =>
+          `${normalizeExerciseName(exercise.name)}:${exercise.sets?.length || 0}`,
+      )
+      .join("|") || "";
 
   useEffect(() => {
     const getUser = async () => {
@@ -117,6 +156,85 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
       setExerciseRepTypes(repTypes);
     }
   }, [activeWorkout?.exercises]);
+
+  useEffect(() => {
+    const fetchPreviousSets = async () => {
+      if (!user?.id || !activeWorkout?.exercises?.length) {
+        setPreviousSets({});
+        return;
+      }
+
+      const exerciseNames = new Set(
+        activeWorkout.exercises
+          .map((exercise) => normalizeExerciseName(exercise.name))
+          .filter(Boolean),
+      );
+
+      if (exerciseNames.size === 0) {
+        setPreviousSets({});
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select(
+          `
+          id,
+          started_at,
+          workout_session_exercises (
+            name,
+            workout_sets (
+              set_number,
+              weight,
+              reps,
+              rep_range_min,
+              rep_range_max,
+              checked,
+              type
+            )
+          )
+        `,
+        )
+        .eq("status", "finished")
+        .eq("user_id", user.id)
+        .order("started_at", { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error("Error fetching previous sets:", error);
+        return;
+      }
+
+      const nextPreviousSets: Record<string, string> = {};
+
+      data?.forEach((session) => {
+        session.workout_session_exercises?.forEach((exercise) => {
+          const exerciseName = normalizeExerciseName(exercise.name);
+          if (!exerciseNames.has(exerciseName)) return;
+
+          exercise.workout_sets
+            ?.sort((a, b) => (a.set_number || 0) - (b.set_number || 0))
+            .forEach((set) => {
+              if (set.checked !== true) return;
+
+              const key = getPreviousSetKey(exercise.name, set.set_number);
+              if (!nextPreviousSets[key]) {
+                nextPreviousSets[key] = formatPreviousSet(set);
+              }
+            });
+        });
+      });
+
+      setPreviousSets(nextPreviousSets);
+    };
+
+    fetchPreviousSets();
+  }, [
+    user?.id,
+    activeWorkout?.id,
+    activeWorkout?.exercises,
+    previousLookupSignature,
+  ]);
 
   useEffect(() => {
     if (activeWorkout) {
@@ -643,7 +761,11 @@ const LoggingWorkout: React.FC<LoggingWorkoutProps> = ({ activeWorkout }) => {
                           </div>
 
                           <div className="flex items-center justify-center w-full">
-                            -
+                            <span className="text-xs text-muted-foreground text-center">
+                              {previousSets[
+                                getPreviousSetKey(exercise.name, set.set_number)
+                              ] || "-"}
+                            </span>
                           </div>
 
                           <div className="flex items-center justify-center w-full">
